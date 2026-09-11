@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#07161a">
+        <meta name="description" content="Barleycove surf conditions and a simple go-or-no-go surf rating.">
+        <title>Barleycove Surf</title>
+        <link rel="stylesheet" href="styles.css">
+        <link rel="manifest" href="manifest.json">
+    </head>
+    <body>
+        <header class="site-header">
+            <div class="header-inner">
+                <a class="brand" href="/" aria-label="Barleycove Surf home">
+                    <span class="brand-mark" aria-hidden="true">BC</span>
+                    <span><strong>Barleycove</strong><small>Surf</small></span>
+                </a>
+                <button class="install-button" id="installButton" type="button" hidden>Add to Home Screen</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero">
+                <div class="hero-inner">
+                    <p class="eyebrow">West Cork · Ireland</p>
+                    <h1>Barleycove Surf forecast</h1>
+                    <p class="hero-copy">a forecast built around Barleycove, with the conditions that actually matter for deciding whether it is worth going out.</p>
+                </div>
+            </section>
+
+            <section class="content" aria-label="Current surf conditions">
+                <div class="status-card">
+                    <div>
+                        <p class="eyebrow">Right now</p>
+                        <h2 id="ratingLabel">Checking conditions</h2>
+                        <p id="ratingReason">Forecast data will appear here when i connect the APIs.</p>
+                    </div>
+                    <div class="score" aria-label="Surf score">
+                        <strong id="scoreValue">--</strong>
+                        <span>/100</span>
+                    </div>
+                </div>
+
+                <div class="conditions-grid">
+                    <article class="conditions-card">
+                        <span class="conditions-label">Swell</span>
+                        <strong id="swellHeight">--</strong>
+                        <span id="swellDetails">--</span>
+                    </article>
+
+                    <article class="conditions-card">
+                        <span class="conditions-label">Wind</span>
+                        <strong id="windSpeed">--</strong>
+                        <span id="windDetails">--</span>
+                    </article>
+
+                    <article class="conditions-card">
+                        <span class="conditions-label">Tide</span>
+                        <strong id="tideState">--</strong>
+                        <span id="tideDetails">--</span>
+                    </article>
+
+                    <article class="conditions-card">
+                        <span class="conditions-label">Water</span>
+                        <strong id="waterTemp">--</strong>
+                    </article>
+                </div>
+
+                <section class="forecast-section">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Today</p>
+                            <h2>Best time to go</h2>
+                        </div>
+                        <span class="section-note">Hourly forecast</span>
+                    </div>
+
+                    <div class="empty-forecast">
+                        <span class="empty-icon" aria-hidden="true">~</span>
+                        <h3>Forecast coming next</h3>
+                        <p>The hourly cards will be populated from the weather and swell data once the backend is connected.</p>
+                    </div>
+                </section>
+
+                <section class="map-section">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Barleycove</p>
+                            <h2>Swell direction</h2>
+                        </div>
+                        <span class="section-note">Nearshore model</span>
+                    </div>
+
+                    <div class="map-placeholder">
+                        <div class="map-grid" aria-hidden="true"></div>
+                        <div class="map-label">Map will be added here</div>
+                        <div class="map-arrow" aria-hidden="true">↙</div>
+                        <div class="map-beach">BARLEYCOVE</div>
+                    </div>
+                </section>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <p>Barleycove Surf · Built for local conditions</p>
+        </footer>
+
+        <script src="app.js"></script>
+    </body>
+</html>
