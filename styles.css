@@ -362,6 +362,25 @@ h1 {
     color: var(--accent);
 }
 
+.surf-map {
+    width: 100%;
+    height: 520px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.leaflet-container {
+    font-family: inherit;
+    background: var(--surface);
+}
+
+.leaflet-control-zoom a {
+    color: #111;
+}
+
+
+/*
 .map-placeholder {
     position: relative;
     min-height: 360px;
@@ -410,7 +429,7 @@ h1 {
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.08em;
-}
+} */
 
 .site-footer {
     width: min(var(--max-width), calc(100% - 32px));
@@ -447,8 +466,8 @@ h1 {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .map-placeholder {
-        min-height: 300px;
+    .surf-map {
+        height: 420px;
     }
 
     .hourly-grid {

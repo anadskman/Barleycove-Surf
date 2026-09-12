@@ -7,6 +7,7 @@
         <meta name="description" content="Barleycove surf conditions and a simple go-or-no-go surf rating.">
         <title>Barleycove Surf</title>
         <link rel="stylesheet" href="styles.css">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
         <link rel="manifest" href="manifest.json">
     </head>
     <body>
@@ -90,12 +91,7 @@
                         <span class="section-note">Nearshore model</span>
                     </div>
 
-                    <div class="map-placeholder">
-                        <div class="map-grid" aria-hidden="true"></div>
-                        <div class="map-label">Map will be added here</div>
-                        <div class="map-arrow" aria-hidden="true">↙</div>
-                        <div class="map-beach">BARLEYCOVE</div>
-                    </div>
+                    <div id="surfMap" class="surf-map"></div>
                 </section>
             </section>
         </main>
@@ -104,6 +100,7 @@
             <p>Barleycove Surf · Built for local conditions</p>
         </footer>
 
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="app.js"></script>
     </body>
 </html>

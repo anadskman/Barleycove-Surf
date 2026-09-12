@@ -768,4 +768,24 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+function initialiseSurfMap() {
+  const mapElement = document.getElementById("surfMap");
+
+  if (!mapElement || typeof L === "undefined") {
+    return;
+  }
+
+  const map = L.map("surfMap").setView([51.469, -9.777], 14);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+
+  L.marker([51.469, -9.777]).addTo(map).bindPopup("Barleycove").openPopup();
+}
+
+initialiseSurfMap();
+
 loadForecast();
