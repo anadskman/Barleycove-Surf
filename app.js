@@ -74,9 +74,381 @@ function getValue(data, key, index) {
   return value;
 }
 
+function directionDifference(a, b) {
+  const difference = Math.abs(a - b);
+
+  return Math.min(difference, 360 - difference);
+}
+
+function getWindConditions(data, index) {
+  const windU = getValue(data, "wind_u-surface", index);
+
+  const windV = getValue(data, "wind_v-surface", index);
+
+  if (windU === null || windV === null) {
+    return null;
+  }
+
+  const speedMs = Math.sqrt(windU * windU + windV * windV);
+
+  const speedKnots = metresPerSecondToKnots(speedMs);
+
+  let direction = (Math.atan2(windU, windV) * 180) / Math.PI;
+
+  if (direction < 0) {
+    direction += 360;
+  }
+
+  return {
+    speed: speedKnots,
+    direction,
+  };
+}
+
+/*NOTE!!!
+ * SURF SCORING
+ *
+ * Maximum score: 100
+ *
+ * Swell direction: 30
+ * Swell height:    20
+ * Swell period:    20
+ * Wind direction:  20
+ * Wind speed:      10
+ */
+
+/*
+ * Swell direction
+ *
+ * Barleycove likes SW/SSW swell.
+ */
+
+function scoreSwellDirection(direction) {
+  if (direction === null) {
+    return 0;
+  }
+
+  const difference = directionDifference(direction, 225);
+
+  if (difference <= 20) {
+    return 30;
+  }
+
+  if (difference <= 35) {
+    return 27;
+  }
+
+  if (difference <= 50) {
+    return 23;
+  }
+
+  if (direction >= 180 && direction <= 270) {
+    return 18;
+  }
+
+  if (direction >= 160 && direction <= 290) {
+    return 10;
+  }
+
+  if (direction >= 140 && direction <= 310) {
+    return 5;
+  }
+
+  return 0;
+}
+
+/* NOTE!!!
+ * Swell height
+ *
+ * This is offshore swell height, not the
+ * exact height of the breaking wave at the beach.
+ */
+
+function scoreSwellHeight(height) {
+  if (height === null) {
+    return 0;
+  }
+
+  if (height >= 0.6 && height <= 1.4) {
+    return 20;
+  }
+
+  if (height >= 0.4 && height < 0.6) {
+    return 16;
+  }
+
+  if (height > 1.4 && height <= 1.8) {
+    return 18;
+  }
+
+  if (height >= 0.3 && height < 0.4) {
+    return 10;
+  }
+
+  if (height > 1.8 && height <= 2.2) {
+    return 12;
+  }
+
+  if (height > 2.2 && height <= 2.8) {
+    return 6;
+  }
+
+  return 0;
+}
+
+function scoreSwellPeriod(period) {
+  if (period === null) {
+    return 0;
+  }
+
+  if (period >= 14) {
+    return 20;
+  }
+
+  if (period >= 12) {
+    return 19;
+  }
+
+  if (period >= 10) {
+    return 17;
+  }
+
+  if (period >= 8) {
+    return 13;
+  }
+
+  if (period >= 7) {
+    return 9;
+  }
+
+  if (period >= 6) {
+    return 5;
+  }
+
+  return 2;
+}
+
+/* NOTE!!!
+ * Wind direction
+ *
+ * N = 0
+ * NE = 45
+ * E = 90
+ * SE = 135
+ * S = 180
+ * SW = 225
+ * W = 270
+ * NW = 315
+ */
+
+function scoreWindDirection(direction) {
+  if (direction === null) {
+    return 0;
+  }
+
+  if (direction >= 0 && direction <= 70) {
+    return 20;
+  }
+
+  if (direction > 70 && direction <= 110) {
+    return 14;
+  }
+
+  if (direction > 290 && direction < 360) {
+    return 10;
+  }
+
+  if (direction > 110 && direction <= 140) {
+    return 8;
+  }
+
+  if (direction > 140 && direction <= 180) {
+    return 5;
+  }
+
+  if (direction > 180 && direction <= 270) {
+    return 2;
+  }
+
+  return 6;
+}
+
+function scoreWindSpeed(speed) {
+  if (speed === null) {
+    return 0;
+  }
+
+  if (speed <= 5) {
+    return 10;
+  }
+
+  if (speed <= 8) {
+    return 9;
+  }
+
+  if (speed <= 12) {
+    return 7;
+  }
+
+  if (speed <= 16) {
+    return 4;
+  }
+
+  if (speed <= 20) {
+    return 2;
+  }
+
+  return 0;
+}
+
+function getSurfRating(score) {
+  if (score >= 80) {
+    return {
+      label: "Very good",
+      className: "good",
+    };
+  }
+
+  if (score >= 65) {
+    return {
+      label: "Worth going",
+      className: "good",
+    };
+  }
+
+  if (score >= 45) {
+    return {
+      label: "Worth checking",
+      className: "okay",
+    };
+  }
+
+  if (score >= 25) {
+    return {
+      label: "Probably not",
+      className: "poor",
+    };
+  }
+
+  return {
+    label: "Not worth it",
+    className: "poor",
+  };
+}
+
+function getSurfRatingReason(factors, conditions) {
+  const reasons = [];
+
+  if (factors.swellDirection >= 27) {
+    reasons.push("excellent SW swell");
+  } else if (factors.swellDirection >= 18) {
+    reasons.push("good SW swell");
+  } else if (factors.swellDirection <= 5) {
+    reasons.push("poor swell direction");
+  }
+
+  if (factors.swellHeight >= 18) {
+    reasons.push("good swell size");
+  } else if (factors.swellHeight <= 6) {
+    reasons.push("small swell");
+  }
+
+  if (factors.period >= 19) {
+    reasons.push("long-period swell");
+  } else if (factors.period <= 5) {
+    reasons.push("short-period swell");
+  }
+
+  if (factors.windDirection >= 20) {
+    reasons.push("offshore N/NE wind");
+  } else if (factors.windDirection <= 2) {
+    reasons.push("poor wind direction");
+  }
+
+  if (factors.windSpeed >= 9) {
+    reasons.push("light wind");
+  } else if (factors.windSpeed <= 2) {
+    reasons.push("strong wind");
+  }
+
+  if (reasons.length === 0) {
+    return "Mixed conditions.";
+  }
+
+  return (
+    reasons
+      .slice(0, 3)
+      .map((reason) => reason.charAt(0).toUpperCase() + reason.slice(1))
+      .join(". ") + "."
+  );
+}
+
+function calculateSurfScore(data, index = 0) {
+  const swellHeight = getValue(data, "swell1_height-surface", index);
+
+  const swellPeriod = getValue(data, "swell1_period-surface", index);
+
+  const swellDirection = getValue(data, "swell1_direction-surface", index);
+
+  const wind = getWindConditions(data, index);
+
+  const windSpeed = wind !== null ? wind.speed : null;
+
+  const windDirection = wind !== null ? wind.direction : null;
+
+  const factors = {
+    swellDirection: scoreSwellDirection(swellDirection),
+
+    swellHeight: scoreSwellHeight(swellHeight),
+
+    period: scoreSwellPeriod(swellPeriod),
+
+    windDirection: scoreWindDirection(windDirection),
+
+    windSpeed: scoreWindSpeed(windSpeed),
+  };
+
+  const score =
+    factors.swellDirection +
+    factors.swellHeight +
+    factors.period +
+    factors.windDirection +
+    factors.windSpeed;
+
+  const rating = getSurfRating(score);
+
+  return {
+    score: Math.round(score),
+
+    rating: rating.label,
+
+    ratingClass: rating.className,
+
+    reason: getSurfRatingReason(factors, {
+      swellHeight,
+      swellPeriod,
+      swellDirection,
+      windSpeed,
+      windDirection,
+    }),
+
+    factors,
+
+    conditions: {
+      swellHeight,
+      swellPeriod,
+      swellDirection,
+      windSpeed,
+      windDirection,
+    },
+  };
+}
+
 async function loadForecast() {
   ratingLabel.textContent = "Loading forecast";
+
   ratingReason.textContent = "Getting the latest Barleycove conditions...";
+
   scoreValue.textContent = "--";
 
   try {
@@ -93,8 +465,10 @@ async function loadForecast() {
     console.error("Forecast error:", error);
 
     ratingLabel.textContent = "Forecast unavailable";
+
     ratingReason.textContent =
       "We could not load the latest forecast. Check the API connection.";
+
     scoreValue.textContent = "--";
   }
 }
@@ -107,6 +481,7 @@ function displayCurrentConditions(data) {
   const now = Date.now();
 
   let closestIndex = 0;
+
   let smallestDifference = Infinity;
 
   for (let i = 0; i < data.ts.length; i++) {
@@ -114,6 +489,7 @@ function displayCurrentConditions(data) {
 
     if (difference < smallestDifference) {
       smallestDifference = difference;
+
       closestIndex = i;
     }
   }
@@ -150,119 +526,34 @@ function displayCurrentConditions(data) {
     swellDetails.textContent = "--";
   }
 
-  const windU = getValue(data, "wind_u-surface", closestIndex);
+  const wind = getWindConditions(data, closestIndex);
 
-  const windV = getValue(data, "wind_v-surface", closestIndex);
+  if (wind !== null) {
+    windSpeed.textContent = `${wind.speed.toFixed(0)} kt`;
 
-  if (windU !== null && windV !== null) {
-    const windSpeedMs = Math.sqrt(windU * windU + windV * windV);
-
-    const windSpeedKnots = metresPerSecondToKnots(windSpeedMs);
-
-    let windDirection = (Math.atan2(windU, windV) * 180) / Math.PI;
-
-    if (windDirection < 0) {
-      windDirection += 360;
-    }
-
-    windSpeed.textContent = `${windSpeedKnots.toFixed(0)} kt`;
-
-    windDetails.textContent = degreesToCompass(windDirection);
+    windDetails.textContent = degreesToCompass(wind.direction);
   } else {
     windSpeed.textContent = "--";
+
     windDetails.textContent = "--";
   }
 
   tideState.textContent = "Coming soon";
+
   tideDetails.textContent = "Tide API in Step 5";
 
   waterTemp.textContent = "Coming soon";
+
   waterDetails.textContent = "Water temperature in Step 5";
 
-  const score = calculateTemporaryScore(
-    swellHeightValue,
-    swellPeriodValue,
-    swellDirectionValue,
-    windU,
-    windV,
-  );
+  const surfScore = calculateSurfScore(data, closestIndex);
 
-  scoreValue.textContent = score;
+  scoreValue.textContent = surfScore.score;
 
-  if (score >= 70) {
-    ratingLabel.textContent = "Worth going";
-    ratingReason.textContent =
-      "The forecast currently has a promising combination of swell and wind.";
-  } else if (score >= 45) {
-    ratingLabel.textContent = "Maybe";
-    ratingReason.textContent =
-      "There is some surf showing, but the conditions are not especially convincing.";
-  } else {
-    ratingLabel.textContent = "Probably not";
-    ratingReason.textContent =
-      "The current forecast does not look particularly promising.";
-  }
+  ratingLabel.textContent = surfScore.rating;
+
+  ratingReason.textContent = surfScore.reason;
 }
-
-function calculateTemporaryScore(height, period, direction, windU, windV) {
-  if (height === null || period === null || direction === null) {
-    return "--";
-  }
-
-  let score = 0;
-
-  if (height >= 1.0) {
-    score += 25;
-  } else if (height >= 0.7) {
-    score += 18;
-  } else if (height >= 0.4) {
-    score += 10;
-  }
-
-  if (period >= 12) {
-    score += 25;
-  } else if (period >= 10) {
-    score += 20;
-  } else if (period >= 8) {
-    score += 13;
-  } else if (period >= 6) {
-    score += 7;
-  }
-
-  if (direction >= 190 && direction <= 240) {
-    score += 30;
-  } else if (direction >= 170 && direction <= 260) {
-    score += 20;
-  } else {
-    score += 5;
-  }
-
-  if (windU !== null && windV !== null) {
-    const windSpeedMs = Math.sqrt(windU * windU + windV * windV);
-
-    const windSpeedKnots = metresPerSecondToKnots(windSpeedMs);
-
-    if (windSpeedKnots <= 10) {
-      score += 20;
-    } else if (windSpeedKnots <= 15) {
-      score += 13;
-    } else if (windSpeedKnots <= 20) {
-      score += 6;
-    }
-  }
-
-  return Math.min(100, Math.round(score));
-}
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("service-worker.js").catch((error) => {
-      console.error("Service worker registration failed:", error);
-    });
-  });
-}
-
-loadForecast();
 
 function formatForecastTime(timestamp, index) {
   const date = new Date(timestamp);
@@ -278,31 +569,6 @@ function formatForecastTime(timestamp, index) {
   });
 }
 
-function getWindConditions(data, index) {
-  const windU = getValue(data, "wind_u-surface", index);
-
-  const windV = getValue(data, "wind_v-surface", index);
-
-  if (windU === null || windV === null) {
-    return null;
-  }
-
-  const speedMs = Math.sqrt(windU * windU + windV * windV);
-
-  const speedKnots = metresPerSecondToKnots(speedMs);
-
-  let direction = (Math.atan2(windU, windV) * 180) / Math.PI;
-
-  if (direction < 0) {
-    direction += 360;
-  }
-
-  return {
-    speed: speedKnots,
-    direction: degreesToCompass(direction),
-  };
-}
-
 function displayHourlyForecast(data) {
   if (!data.ts || data.ts.length === 0) {
     hourlyGrid.innerHTML = "<p>Hourly forecast unavailable.</p>";
@@ -313,6 +579,7 @@ function displayHourlyForecast(data) {
   const now = Date.now();
 
   let currentIndex = 0;
+
   let smallestDifference = Infinity;
 
   for (let i = 0; i < data.ts.length; i++) {
@@ -320,6 +587,7 @@ function displayHourlyForecast(data) {
 
     if (difference < smallestDifference) {
       smallestDifference = difference;
+
       currentIndex = i;
     }
   }
@@ -339,6 +607,8 @@ function displayHourlyForecast(data) {
 
     const wind = getWindConditions(data, index);
 
+    const hourlyScore = calculateSurfScore(data, index);
+
     const timeLabel = formatForecastTime(data.ts[index], index - currentIndex);
 
     const swellHeightText =
@@ -353,7 +623,8 @@ function displayHourlyForecast(data) {
 
     const windSpeedText = wind !== null ? `${wind.speed.toFixed(0)} kt` : "--";
 
-    const windDetailsText = wind !== null ? wind.direction : "--";
+    const windDetailsText =
+      wind !== null ? degreesToCompass(wind.direction) : "--";
 
     const isCurrent = index === currentIndex;
 
@@ -382,9 +653,23 @@ function displayHourlyForecast(data) {
             Wind ${windDetailsText}
           </div>
         </div>
+
+        <div class="hourly-score">
+          ${hourlyScore.score}/100
+        </div>
       </article>
     `;
   }
 
   hourlyGrid.innerHTML = html;
 }
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch((error) => {
+      console.error("Service worker registration failed:", error);
+    });
+  });
+}
+
+loadForecast();
