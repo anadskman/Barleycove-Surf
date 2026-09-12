@@ -290,6 +290,69 @@ h1 {
     font-size: 13px;
 }
 
+.hourly-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+}
+
+.hourly-card {
+    min-width: 145px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.hourly-card.current {
+    border-color: var(--accent);
+}
+
+.hourly-time {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 14px;
+}
+
+.hourly-card.current .hourly-time {
+    color: var(--accent);
+}
+
+.hourly-swell {
+    margin-bottom: 14px;
+}
+
+.hourly-swell-height {
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.hourly-swell-details {
+    margin-top: 5px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.hourly-wind {
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.hourly-wind-speed {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.hourly-wind-details {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
 .map-placeholder {
     position: relative;
     min-height: 360px;
@@ -349,7 +412,6 @@ h1 {
     font-size: 11px;
 }
 
-
 @media (max-width: 760px) {
     .hero-inner {
         padding: 48px 0 44px;
@@ -378,6 +440,17 @@ h1 {
 
     .map-placeholder {
         min-height: 300px;
+    }
+
+    .hourly-grid {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+    }
+
+    .hourly-card {
+        flex: 0 0 145px;
+        scroll-snap-align: start;
     }
 }
 
