@@ -1,5 +1,7 @@
 const installButton = document.getElementById("installButton");
 
+const hourlyGrid = document.getElementById("hourlyGrid");
+
 const ratingLabel = document.getElementById("ratingLabel");
 const ratingReason = document.getElementById("ratingReason");
 const scoreValue = document.getElementById("scoreValue");
@@ -115,6 +117,8 @@ function displayCurrentConditions(data) {
       closestIndex = i;
     }
   }
+
+  displayHourlyForecast(data);
 
   const swellHeightValue = getValue(
     data,
