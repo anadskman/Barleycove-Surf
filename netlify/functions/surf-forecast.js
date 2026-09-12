@@ -45,9 +45,6 @@ function mergeForecasts(waveData, windData) {
     },
   };
 
-  /*
-   * Add all wave/swell data.
-   */
 
   for (const [key, value] of Object.entries(waveData)) {
     if (key === "ts" || key === "units") {
@@ -56,10 +53,6 @@ function mergeForecasts(waveData, windData) {
 
     result[key] = value;
   }
-
-  /*
-   * Match wind data to the wave timestamps.
-   */
 
   const windIndexByTimestamp = new Map();
 
@@ -104,26 +97,12 @@ export default async () => {
   }
 
   try {
-    /*
-     * ICON-EU wave model.
-     *
-     * iconEuWave supports:
-     * waves
-     * wavesPower
-     * swell1
-     */
 
     const wavePromise = getWindyForecast(
       "iconEuWave",
       ["waves", "wavesPower", "swell1"],
       apiKey,
     );
-
-    /*
-     * ICON-EU weather model.
-     *
-     * This provides the local wind vectors.
-     */
 
     const windPromise = getWindyForecast(
       "iconEu",

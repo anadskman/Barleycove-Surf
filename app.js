@@ -259,3 +259,128 @@ if ("serviceWorker" in navigator) {
 }
 
 loadForecast();
+
+function formatForecastTime(timestamp, index) {
+  const date = new Date(timestamp);
+
+  if (index === 0) {
+    return "Now";
+  }
+
+  return date.toLocaleTimeString("en-IE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function getWindConditions(data, index) {
+  const windU = getValue(data, "wind_u-surface", index);
+
+  const windV = getValue(data, "wind_v-surface", index);
+
+  if (windU === null || windV === null) {
+    return null;
+  }
+
+  const speedMs = Math.sqrt(windU * windU + windV * windV);
+
+  const speedKnots = metresPerSecondToKnots(speedMs);
+
+  let direction = (Math.atan2(windU, windV) * 180) / Math.PI;
+
+  if (direction < 0) {
+    direction += 360;
+  }
+
+  return {
+    speed: speedKnots,
+    direction: degreesToCompass(direction),
+  };
+}
+
+function displayHourlyForecast(data) {
+  if (!data.ts || data.ts.length === 0) {
+    hourlyGrid.innerHTML = "<p>Hourly forecast unavailable.</p>";
+
+    return;
+  }
+
+  const now = Date.now();
+
+  let currentIndex = 0;
+  let smallestDifference = Infinity;
+
+  for (let i = 0; i < data.ts.length; i++) {
+    const difference = Math.abs(data.ts[i] - now);
+
+    if (difference < smallestDifference) {
+      smallestDifference = difference;
+      currentIndex = i;
+    }
+  }
+
+  const hoursToShow = 12;
+
+  const endIndex = Math.min(currentIndex + hoursToShow, data.ts.length);
+
+  let html = "";
+
+  for (let index = currentIndex; index < endIndex; index++) {
+    const swellHeight = getValue(data, "swell1_height-surface", index);
+
+    const swellPeriod = getValue(data, "swell1_period-surface", index);
+
+    const swellDirection = getValue(data, "swell1_direction-surface", index);
+
+    const wind = getWindConditions(data, index);
+
+    const timeLabel = formatForecastTime(data.ts[index], index - currentIndex);
+
+    const swellHeightText =
+      swellHeight !== null ? `${swellHeight.toFixed(1)} m` : "--";
+
+    let swellDetailsText = "--";
+
+    if (swellPeriod !== null && swellDirection !== null) {
+      swellDetailsText =
+        `${swellPeriod.toFixed(0)}s · ` + `${degreesToCompass(swellDirection)}`;
+    }
+
+    const windSpeedText = wind !== null ? `${wind.speed.toFixed(0)} kt` : "--";
+
+    const windDetailsText = wind !== null ? wind.direction : "--";
+
+    const isCurrent = index === currentIndex;
+
+    html += `
+      <article class="hourly-card${isCurrent ? " current" : ""}">
+        <div class="hourly-time">
+          ${timeLabel}
+        </div>
+
+        <div class="hourly-swell">
+          <div class="hourly-swell-height">
+            ${swellHeightText}
+          </div>
+
+          <div class="hourly-swell-details">
+            ${swellDetailsText}
+          </div>
+        </div>
+
+        <div class="hourly-wind">
+          <div class="hourly-wind-speed">
+            ${windSpeedText}
+          </div>
+
+          <div class="hourly-wind-details">
+            Wind ${windDetailsText}
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  hourlyGrid.innerHTML = html;
+}
