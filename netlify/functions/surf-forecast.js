@@ -36,6 +36,34 @@ async function getWindyForecast(model, parameters, apiKey) {
   return data;
 }
 
+async function getTideForecast() {
+  const url =
+    "https://erddap.marine.ie/erddap/tabledap/IMI_TidePrediction_HighLow.json" +
+    "?time,stationID,Water_Level_ODMalin,tide_time_category" +
+    "&stationID=Castletownbere" +
+    "&time%3Enow-1day" +
+    "&time%3Cnow%2B3days";
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Marine Institute tide API returned ${response.status}.`);
+  }
+
+  const data = await response.json();
+
+  if (!data.table || !data.table.rows) {
+    throw new Error("Marine Institute returned no tide data.");
+  }
+
+  return data.table.rows.map((row) => ({
+    time: new Date(row[0]).getTime(),
+    station: row[1],
+    height: row[2],
+    type: row[3],
+  }));
+}
+
 function mergeForecasts(waveData, windData) {
   const result = {
     ts: waveData.ts,
@@ -44,7 +72,6 @@ function mergeForecasts(waveData, windData) {
       ...(windData.units || {}),
     },
   };
-
 
   for (const [key, value] of Object.entries(waveData)) {
     if (key === "ts" || key === "units") {
@@ -97,7 +124,6 @@ export default async () => {
   }
 
   try {
-
     const wavePromise = getWindyForecast(
       "iconEuWave",
       ["waves", "wavesPower", "swell1"],
@@ -110,9 +136,17 @@ export default async () => {
       apiKey,
     );
 
-    const [waveData, windData] = await Promise.all([wavePromise, windPromise]);
+    const tidePromise = getTideForecast();
+
+    const [waveData, windData, tideData] = await Promise.all([
+      wavePromise,
+      windPromise,
+      tidePromise,
+    ]);
 
     const mergedData = mergeForecasts(waveData, windData);
+
+    mergedData.tides = tideData;
 
     return new Response(JSON.stringify(mergedData), {
       status: 200,

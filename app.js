@@ -80,6 +80,95 @@ function directionDifference(a, b) {
   return Math.min(difference, 360 - difference);
 }
 
+function getTideConditions(data, timestamp) {
+  if (!data.tides || data.tides.length === 0) {
+    return null;
+  }
+
+  const tides = [...data.tides].sort((a, b) => a.time - b.time);
+
+  let previousTide = null;
+  let nextTide = null;
+
+  for (const tide of tides) {
+    if (tide.time <= timestamp) {
+      previousTide = tide;
+    }
+
+    if (tide.time > timestamp && !nextTide) {
+      nextTide = tide;
+    }
+  }
+
+  if (!previousTide) {
+    previousTide = tides[0];
+  }
+
+  if (!nextTide) {
+    nextTide = tides[tides.length - 1];
+  }
+
+  let state = "Unknown";
+
+  if (previousTide && nextTide) {
+    if (previousTide.type === "LOW" && nextTide.type === "HIGH") {
+      state = "Rising";
+    }
+
+    if (previousTide.type === "HIGH" && nextTide.type === "LOW") {
+      state = "Falling";
+    }
+  }
+
+  const previousTime = previousTide.time;
+
+  const nextTime = nextTide.time;
+
+  let height = previousTide.height;
+
+  if (
+    previousTime < nextTime &&
+    timestamp >= previousTime &&
+    timestamp <= nextTime
+  ) {
+    const progress = (timestamp - previousTime) / (nextTime - previousTime);
+
+    height =
+      previousTide.height + (nextTide.height - previousTide.height) * progress;
+  }
+
+  return {
+    state,
+    height,
+    previousTide,
+    nextTide,
+  };
+}
+
+function formatTideTime(timestamp) {
+  return new Date(timestamp).toLocaleTimeString("en-IE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function scoreTide(tide) {
+  if (!tide) {
+    return 0;
+  }
+
+  if (tide.state === "Rising") {
+    return 10;
+  }
+
+  if (tide.state === "Falling") {
+    return 6;
+  }
+
+  return 8;
+}
+
 function getWindConditions(data, index) {
   const windU = getValue(data, "wind_u-surface", index);
 
@@ -170,27 +259,27 @@ function scoreSwellHeight(height) {
   }
 
   if (height >= 0.6 && height <= 1.4) {
-    return 20;
+    return 15;
   }
 
   if (height >= 0.4 && height < 0.6) {
-    return 16;
-  }
-
-  if (height > 1.4 && height <= 1.8) {
-    return 18;
-  }
-
-  if (height >= 0.3 && height < 0.4) {
-    return 10;
-  }
-
-  if (height > 1.8 && height <= 2.2) {
     return 12;
   }
 
+  if (height > 1.4 && height <= 1.8) {
+    return 14;
+  }
+
+  if (height >= 0.3 && height < 0.4) {
+    return 8;
+  }
+
+  if (height > 1.8 && height <= 2.2) {
+    return 9;
+  }
+
   if (height > 2.2 && height <= 2.8) {
-    return 6;
+    return 5;
   }
 
   return 0;
@@ -279,23 +368,23 @@ function scoreWindSpeed(speed) {
   }
 
   if (speed <= 5) {
-    return 10;
+    return 5;
   }
 
   if (speed <= 8) {
-    return 9;
-  }
-
-  if (speed <= 12) {
-    return 7;
-  }
-
-  if (speed <= 16) {
     return 4;
   }
 
-  if (speed <= 20) {
+  if (speed <= 12) {
+    return 3;
+  }
+
+  if (speed <= 16) {
     return 2;
+  }
+
+  if (speed <= 20) {
+    return 1;
   }
 
   return 0;
@@ -396,6 +485,10 @@ function calculateSurfScore(data, index = 0) {
 
   const windDirection = wind !== null ? wind.direction : null;
 
+  const timestamp = data.ts[index];
+
+  const tide = getTideConditions(data, timestamp);
+
   const factors = {
     swellDirection: scoreSwellDirection(swellDirection),
 
@@ -406,6 +499,8 @@ function calculateSurfScore(data, index = 0) {
     windDirection: scoreWindDirection(windDirection),
 
     windSpeed: scoreWindSpeed(windSpeed),
+
+    tide: scoreTide(tide),
   };
 
   const score =
@@ -413,7 +508,8 @@ function calculateSurfScore(data, index = 0) {
     factors.swellHeight +
     factors.period +
     factors.windDirection +
-    factors.windSpeed;
+    factors.windSpeed +
+    factors.tide;
 
   const rating = getSurfRating(score);
 
@@ -440,6 +536,7 @@ function calculateSurfScore(data, index = 0) {
       swellDirection,
       windSpeed,
       windDirection,
+      tide,
     },
   };
 }
@@ -538,9 +635,20 @@ function displayCurrentConditions(data) {
     windDetails.textContent = "--";
   }
 
-  tideState.textContent = "Coming soon";
+  const currentTide = getTideConditions(data, data.ts[closestIndex]);
 
-  tideDetails.textContent = "Tide API in Step 5";
+  if (currentTide) {
+    tideState.textContent = currentTide.state;
+
+    tideDetails.textContent =
+      `${currentTide.height.toFixed(1)} m · ` +
+      `${currentTide.nextTide.type === "HIGH" ? "High" : "Low"} ` +
+      `${formatTideTime(currentTide.nextTide.time)}`;
+  } else {
+    tideState.textContent = "--";
+
+    tideDetails.textContent = "--";
+  }
 
   waterTemp.textContent = "Coming soon";
 
@@ -609,6 +717,8 @@ function displayHourlyForecast(data) {
 
     const hourlyScore = calculateSurfScore(data, index);
 
+    const hourlyTide = getTideConditions(data, data.ts[index]);
+
     const timeLabel = formatForecastTime(data.ts[index], index - currentIndex);
 
     const swellHeightText =
@@ -627,6 +737,8 @@ function displayHourlyForecast(data) {
       wind !== null ? degreesToCompass(wind.direction) : "--";
 
     const isCurrent = index === currentIndex;
+
+    const tideText = hourlyTide ? hourlyTide.state : "--";
 
     html += `
       <article class="hourly-card${isCurrent ? " current" : ""}">
@@ -652,6 +764,14 @@ function displayHourlyForecast(data) {
           <div class="hourly-wind-details">
             Wind ${windDetailsText}
           </div>
+        </div>
+
+        <div class="hourly-tide">
+          Tide ${tideText}
+        </div>
+
+        <div class="hourly-score">
+          ${hourlyScore.score}/100
         </div>
 
         <div class="hourly-score">
