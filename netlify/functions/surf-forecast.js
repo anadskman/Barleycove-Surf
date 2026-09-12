@@ -38,19 +38,19 @@ async function getWindyForecast(model, parameters, apiKey) {
 
 async function getTideForecast() {
   const url =
-    "https://erddap.marine.ie/erddap/tabledap/IMI_TidePrediction_HighLow.json" +
-    "?time,stationID,Water_Level_ODMalin,tide_time_category" +
+    "https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.json" +
+    "?time,stationID,Water_Level_ODM" +
     "&stationID=Castletownbere" +
-    "&time%3Enow-1day" +
-    "&time%3Cnow%2B3days";
+    "&time>=now-1day" +
+    "&time<=now+3days";
 
   const response = await fetch(url);
+
+  const data = await response.json();
 
   if (!response.ok) {
     throw new Error(`Marine Institute tide API returned ${response.status}.`);
   }
-
-  const data = await response.json();
 
   if (!data.table || !data.table.rows) {
     throw new Error("Marine Institute returned no tide data.");
@@ -58,9 +58,7 @@ async function getTideForecast() {
 
   return data.table.rows.map((row) => ({
     time: new Date(row[0]).getTime(),
-    station: row[1],
     height: row[2],
-    type: row[3],
   }));
 }
 

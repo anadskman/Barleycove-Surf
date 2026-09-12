@@ -87,61 +87,42 @@ function getTideConditions(data, timestamp) {
 
   const tides = [...data.tides].sort((a, b) => a.time - b.time);
 
-  let previousTide = null;
-  let nextTide = null;
+  let closestIndex = 0;
 
-  for (const tide of tides) {
-    if (tide.time <= timestamp) {
-      previousTide = tide;
+  let smallestDifference = Infinity;
+
+  for (let i = 0; i < tides.length; i++) {
+    const difference = Math.abs(tides[i].time - timestamp);
+
+    if (difference < smallestDifference) {
+      smallestDifference = difference;
+
+      closestIndex = i;
     }
-
-    if (tide.time > timestamp && !nextTide) {
-      nextTide = tide;
-    }
   }
 
-  if (!previousTide) {
-    previousTide = tides[0];
-  }
+  const current = tides[closestIndex];
 
-  if (!nextTide) {
-    nextTide = tides[tides.length - 1];
-  }
+  const previous = tides[Math.max(0, closestIndex - 1)];
+
+  const next = tides[Math.min(tides.length - 1, closestIndex + 1)];
 
   let state = "Unknown";
 
-  if (previousTide && nextTide) {
-    if (previousTide.type === "LOW" && nextTide.type === "HIGH") {
-      state = "Rising";
-    }
-
-    if (previousTide.type === "HIGH" && nextTide.type === "LOW") {
-      state = "Falling";
-    }
-  }
-
-  const previousTime = previousTide.time;
-
-  const nextTime = nextTide.time;
-
-  let height = previousTide.height;
-
-  if (
-    previousTime < nextTime &&
-    timestamp >= previousTime &&
-    timestamp <= nextTime
-  ) {
-    const progress = (timestamp - previousTime) / (nextTime - previousTime);
-
-    height =
-      previousTide.height + (nextTide.height - previousTide.height) * progress;
+  if (next.height > current.height) {
+    state = "Rising";
+  } else if (next.height < current.height) {
+    state = "Falling";
   }
 
   return {
     state,
-    height,
-    previousTide,
-    nextTide,
+
+    height: current.height,
+
+    previousTide: previous,
+
+    nextTide: next,
   };
 }
 
@@ -200,10 +181,11 @@ function getWindConditions(data, index) {
  * Maximum score: 100
  *
  * Swell direction: 30
- * Swell height:    20
+ * Swell height:    15
  * Swell period:    20
  * Wind direction:  20
- * Wind speed:      10
+ * Wind speed:       5
+ * Tide:            10
  */
 
 /*
@@ -641,9 +623,7 @@ function displayCurrentConditions(data) {
     tideState.textContent = currentTide.state;
 
     tideDetails.textContent =
-      `${currentTide.height.toFixed(1)} m · ` +
-      `${currentTide.nextTide.type === "HIGH" ? "High" : "Low"} ` +
-      `${formatTideTime(currentTide.nextTide.time)}`;
+      `${currentTide.height.toFixed(1)} m · ` + `Predicted level`;
   } else {
     tideState.textContent = "--";
 
@@ -768,10 +748,6 @@ function displayHourlyForecast(data) {
 
         <div class="hourly-tide">
           Tide ${tideText}
-        </div>
-
-        <div class="hourly-score">
-          ${hourlyScore.score}/100
         </div>
 
         <div class="hourly-score">
