@@ -775,7 +775,9 @@ function initialiseSurfMap() {
     return;
   }
 
-  const map = L.map("surfMap").setView([51.469, -9.777], 14);
+  const barleycove = [51.4564, -9.7781];
+
+  const map = L.map("surfMap").setView(barleycove, 15);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -783,7 +785,32 @@ function initialiseSurfMap() {
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
 
-  L.marker([51.469, -9.777]).addTo(map).bindPopup("Barleycove").openPopup();
+  L.marker(barleycove).addTo(map).bindPopup("Barleycove Beach").openPopup();
+
+  const surfZone = [
+    [51.4557, -9.7845],
+    [51.4548, -9.7805],
+    [51.4543, -9.776],
+    [51.4544, -9.7715],
+  ];
+
+  L.polyline(surfZone, {
+    weight: 5,
+    opacity: 0.9,
+  })
+    .addTo(map)
+    .bindTooltip("Barleycove surf zone");
+
+  const beachDirectionStart = [51.4545, -9.778];
+  const beachDirectionEnd = [51.457, -9.778];
+
+  L.polyline([beachDirectionStart, beachDirectionEnd], {
+    weight: 3,
+    dashArray: "8 8",
+    opacity: 0.8,
+  })
+    .addTo(map)
+    .bindTooltip("Approx. beach-facing direction");
 }
 
 initialiseSurfMap();
