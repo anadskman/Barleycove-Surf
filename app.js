@@ -552,6 +552,66 @@ async function loadForecast() {
   }
 }
 
+function updateSwellMap(data, index) {
+  const mapElement = document.getElementById("surfMap");
+
+  if (!mapElement || typeof L === "undefined" || !data.ts || !data.ts[index]) {
+    return;
+  }
+
+  const swellDirection = getValue(data, "swell1_direction-surface", index);
+
+  if (swellDirection === null) {
+    return;
+  }
+
+  const beach = [51.4564, -9.7781];
+
+  const arrowLength = 0.004;
+
+  const directionRadians = (swellDirection * Math.PI) / 180;
+
+  const endPoint = [
+    beach[0] + Math.cos(directionRadians) * arrowLength,
+    beach[1] + Math.sin(directionRadians) * arrowLength,
+  ];
+
+  if (window.swellArrow) {
+    window.swellArrow.setLatLngs([endPoint, beach]);
+  } else {
+    window.swellArrow = L.polyline([endPoint, beach], {
+      weight: 5,
+      opacity: 0.9,
+    }).addTo(window.surfMap);
+  }
+
+  if (window.swellArrowHead) {
+    window.swellArrowHead.setLatLng(endPoint);
+  } else {
+    window.swellArrowHead = L.circleMarker(endPoint, {
+      radius: 7,
+      weight: 2,
+      fillOpacity: 1,
+    }).addTo(window.surfMap);
+  }
+
+  if (window.swellDirectionLabel) {
+    window.swellDirectionLabel.setLatLng(endPoint);
+    window.swellDirectionLabel.setContent(
+      `Swell ${degreesToCompass(swellDirection)}`,
+    );
+  } else {
+    window.swellDirectionLabel = L.tooltip({
+      permanent: true,
+      direction: "top",
+      offset: [0, -8],
+    })
+      .setLatLng(endPoint)
+      .setContent(`Swell ${degreesToCompass(swellDirection)}`)
+      .addTo(window.surfMap);
+  }
+}
+
 function displayCurrentConditions(data) {
   if (!data.ts || data.ts.length === 0) {
     throw new Error("Windy returned no forecast timestamps.");
@@ -574,6 +634,8 @@ function displayCurrentConditions(data) {
   }
 
   displayHourlyForecast(data);
+  
+  updateSwellMap(data, closestIndex);
 
   const swellHeightValue = getValue(
     data,
@@ -778,6 +840,8 @@ function initialiseSurfMap() {
   const barleycove = [51.4564, -9.7781];
 
   const map = L.map("surfMap").setView(barleycove, 15);
+
+  window.surfMap = map;
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
