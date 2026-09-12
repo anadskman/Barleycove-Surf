@@ -39,27 +39,45 @@ async function getWindyForecast(model, parameters, apiKey) {
 async function getTideForecast() {
   const url =
     "https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.json" +
-    "?time,stationID,Water_Level_ODM" +
+    "?time,stationID,Water_Level" +
     "&stationID=Castletownbere" +
     "&time>=now-1day" +
     "&time<=now+3days";
 
   const response = await fetch(url);
 
-  const data = await response.json();
+  const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Marine Institute tide API returned ${response.status}.`);
+    throw new Error(
+      `Marine Institute tide API returned ${response.status}: ${text.slice(0, 300)}`
+    );
+  }
+
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Marine Institute returned invalid JSON: ${text.slice(0, 300)}`
+    );
   }
 
   if (!data.table || !data.table.rows) {
     throw new Error("Marine Institute returned no tide data.");
   }
 
-  return data.table.rows.map((row) => ({
-    time: new Date(row[0]).getTime(),
-    height: row[2],
-  }));
+  return data.table.rows
+    .map((row) => ({
+      time: new Date(row[0]).getTime(),
+      height: Number(row[2]),
+    }))
+    .filter(
+      (tide) =>
+        Number.isFinite(tide.time) &&
+        Number.isFinite(tide.height)
+    );
 }
 
 function mergeForecasts(waveData, windData) {
@@ -134,13 +152,18 @@ export default async () => {
       apiKey,
     );
 
-    const tidePromise = getTideForecast();
+const [waveData, windData] = await Promise.all([
+  wavePromise,
+  windPromise,
+]);
 
-    const [waveData, windData, tideData] = await Promise.all([
-      wavePromise,
-      windPromise,
-      tidePromise,
-    ]);
+let tideData = [];
+
+try {
+  tideData = await getTideForecast();
+} catch (error) {
+  console.error("Tide forecast error:", error);
+}
 
     const mergedData = mergeForecasts(waveData, windData);
 
@@ -155,11 +178,11 @@ export default async () => {
       },
     });
   } catch (error) {
-    console.error("Windy forecast error:", error);
+    console.error("Surf forecast error:", error);
 
     return new Response(
       JSON.stringify({
-        error: "Windy API request failed.",
+       error: "Surf forecast request failed.",
         details: error.message,
       }),
       {
