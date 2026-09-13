@@ -685,7 +685,7 @@ function updateSwellMap(data, index) {
     return;
   }
 
-  const beach = [51.4564, -9.7781];
+  const beach = [51.46716, -9.77497];
 
   const arrowLength = 0.004;
 
@@ -969,7 +969,7 @@ function initialiseSurfMap() {
     return;
   }
 
-  const barleycove = [51.4564, -9.7781];
+  const barleycove = [51.46716, -9.77497];
 
   const map = L.map("surfMap").setView(barleycove, 15);
 
@@ -1010,67 +1010,104 @@ function initialiseSurfMap() {
 }
 
 const submitReport = document.getElementById("submitReport");
+
 const reportList = document.getElementById("reportList");
 
-function loadLocalReports() {
-  const reports = JSON.parse(localStorage.getItem("barleycoveReports") || "[]");
+async function loadLocalReports() {
+  if (!reportList) {
+    return;
+  }
 
-  reportList.innerHTML = "";
+  try {
+    const response = await fetch("/.netlify/functions/surf-reports");
 
-  for (const report of reports) {
-    const card = document.createElement("article");
+    const reports = await response.json();
 
-    card.className = "report-card";
+    if (!response.ok) {
+      throw new Error(reports.error || "Could not load surf reports.");
+    }
 
-    card.innerHTML = `
-      <div class="report-card-top">
-        <div class="report-height">
-          ${report.height} m
+    reportList.innerHTML = "";
+
+    for (const report of reports) {
+      const card = document.createElement("article");
+
+      card.className = "report-card";
+
+      card.innerHTML = `
+        <div class="report-card-top">
+          <div class="report-height">
+            ${Number(report.wave_height).toFixed(1)} m
+          </div>
+
+          <div class="report-date">
+            ${new Date(report.created_at).toLocaleString("en-IE")}
+          </div>
         </div>
 
-        <div class="report-date">
-          ${new Date(report.time).toLocaleString("en-IE")}
+        <div class="report-details">
+          <span class="report-tag">
+            ${report.wave_shape}
+          </span>
+
+          <span class="report-tag">
+            ${report.crowd}
+          </span>
         </div>
-      </div>
+      `;
 
-      <div class="report-details">
-        <span class="report-tag">
-          ${report.shape}
-        </span>
+      reportList.appendChild(card);
+    }
+  } catch (error) {
+    console.error("Could not load surf reports:", error);
 
-        <span class="report-tag">
-          ${report.crowd}
-        </span>
-      </div>
-    `;
-
-    reportList.appendChild(card);
+    reportList.innerHTML = "<p>Surf reports unavailable.</p>";
   }
 }
 
-submitReport.addEventListener("click", () => {
-  const height = document.getElementById("reportHeight").value;
+if (submitReport) {
+  submitReport.addEventListener("click", async () => {
+    const waveHeight = document.getElementById("reportHeight").value;
 
-  const shape = document.getElementById("reportShape").value;
+    const waveShape = document.getElementById("reportShape").value;
 
-  const crowd = document.getElementById("reportCrowd").value;
+    const crowd = document.getElementById("reportCrowd").value;
 
-  const reports = JSON.parse(localStorage.getItem("barleycoveReports") || "[]");
+    submitReport.disabled = true;
+    submitReport.textContent = "Saving...";
 
-  reports.unshift({
-    height,
-    shape,
-    crowd,
-    time: Date.now(),
+    try {
+      const response = await fetch("/.netlify/functions/surf-reports", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          waveHeight,
+          waveShape,
+          crowd,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not save report.");
+      }
+
+      await loadLocalReports();
+    } catch (error) {
+      console.error("Could not save surf report:", error);
+
+      alert("Could not save the surf report.");
+    } finally {
+      submitReport.disabled = false;
+      submitReport.textContent = "Save report";
+    }
   });
-
-  localStorage.setItem(
-    "barleycoveReports",
-    JSON.stringify(reports.slice(0, 20)),
-  );
-
-  loadLocalReports();
-});
+}
 
 loadLocalReports();
 

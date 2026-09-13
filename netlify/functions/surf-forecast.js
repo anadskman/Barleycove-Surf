@@ -1,6 +1,6 @@
 const BARLEYCOVE = {
-  lat: 51.469,
-  lon: -9.777,
+  lat: 51.46716,
+  lon: -9.77497,
 };
 
 const WINDY_URL = "https://api.windy.com/api/point-forecast/v2";
@@ -50,7 +50,7 @@ async function getTideForecast() {
 
   if (!response.ok) {
     throw new Error(
-      `Marine Institute tide API returned ${response.status}: ${text.slice(0, 300)}`
+      `Marine Institute tide API returned ${response.status}: ${text.slice(0, 300)}`,
     );
   }
 
@@ -60,7 +60,7 @@ async function getTideForecast() {
     data = JSON.parse(text);
   } catch {
     throw new Error(
-      `Marine Institute returned invalid JSON: ${text.slice(0, 300)}`
+      `Marine Institute returned invalid JSON: ${text.slice(0, 300)}`,
     );
   }
 
@@ -74,9 +74,7 @@ async function getTideForecast() {
       height: Number(row[2]),
     }))
     .filter(
-      (tide) =>
-        Number.isFinite(tide.time) &&
-        Number.isFinite(tide.height)
+      (tide) => Number.isFinite(tide.time) && Number.isFinite(tide.height),
     );
 }
 
@@ -152,18 +150,15 @@ export default async () => {
       apiKey,
     );
 
-const [waveData, windData] = await Promise.all([
-  wavePromise,
-  windPromise,
-]);
+    const [waveData, windData] = await Promise.all([wavePromise, windPromise]);
 
-let tideData = [];
+    let tideData = [];
 
-try {
-  tideData = await getTideForecast();
-} catch (error) {
-  console.error("Tide forecast error:", error);
-}
+    try {
+      tideData = await getTideForecast();
+    } catch (error) {
+      console.error("Tide forecast error:", error);
+    }
 
     const mergedData = mergeForecasts(waveData, windData);
 
@@ -182,7 +177,7 @@ try {
 
     return new Response(
       JSON.stringify({
-       error: "Surf forecast request failed.",
+        error: "Surf forecast request failed.",
         details: error.message,
       }),
       {
