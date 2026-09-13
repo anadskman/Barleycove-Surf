@@ -483,6 +483,8 @@ function calculateSurfScore(data, index = 0) {
     windSpeed: scoreWindSpeed(windSpeed),
 
     tide: scoreTide(tide),
+
+    swellExposure: scoreSwellExposure(swellDirection),
   };
 
   const score =
@@ -552,6 +554,46 @@ async function loadForecast() {
   }
 }
 
+function getSwellApproachAngle(swellDirection) {
+  if (swellDirection === null) {
+    return null;
+  }
+
+  const beachFacingDirection = 180;
+
+  return directionDifference(swellDirection, beachFacingDirection);
+}
+
+function scoreSwellExposure(swellDirection) {
+  const angle = getSwellApproachAngle(swellDirection);
+
+  if (angle === null) {
+    return 0;
+  }
+
+  if (angle <= 20) {
+    return 10;
+  }
+
+  if (angle <= 40) {
+    return 9;
+  }
+
+  if (angle <= 60) {
+    return 8;
+  }
+
+  if (angle <= 80) {
+    return 6;
+  }
+
+  if (angle <= 100) {
+    return 4;
+  }
+
+  return 2;
+}
+
 function updateSwellMap(data, index) {
   const mapElement = document.getElementById("surfMap");
 
@@ -595,11 +637,21 @@ function updateSwellMap(data, index) {
     }).addTo(window.surfMap);
   }
 
+  const approachAngle = getSwellApproachAngle(swellDirection);
+
+  const exposureScore = scoreSwellExposure(swellDirection);
+
+  const directionText = degreesToCompass(swellDirection);
+
+  const labelText =
+    `Swell ${directionText} · ` +
+    `${approachAngle.toFixed(0)}° off beach · ` +
+    `${exposureScore}/10 exposure`;
+
   if (window.swellDirectionLabel) {
     window.swellDirectionLabel.setLatLng(endPoint);
-    window.swellDirectionLabel.setContent(
-      `Swell ${degreesToCompass(swellDirection)}`,
-    );
+
+    window.swellDirectionLabel.setContent(labelText);
   } else {
     window.swellDirectionLabel = L.tooltip({
       permanent: true,
@@ -607,7 +659,7 @@ function updateSwellMap(data, index) {
       offset: [0, -8],
     })
       .setLatLng(endPoint)
-      .setContent(`Swell ${degreesToCompass(swellDirection)}`)
+      .setContent(labelText)
       .addTo(window.surfMap);
   }
 }
@@ -634,7 +686,7 @@ function displayCurrentConditions(data) {
   }
 
   displayHourlyForecast(data);
-  
+
   updateSwellMap(data, closestIndex);
 
   const swellHeightValue = getValue(
