@@ -1009,6 +1009,71 @@ function initialiseSurfMap() {
     .bindTooltip("Approx. beach-facing direction");
 }
 
+const submitReport = document.getElementById("submitReport");
+const reportList = document.getElementById("reportList");
+
+function loadLocalReports() {
+  const reports = JSON.parse(localStorage.getItem("barleycoveReports") || "[]");
+
+  reportList.innerHTML = "";
+
+  for (const report of reports) {
+    const card = document.createElement("article");
+
+    card.className = "report-card";
+
+    card.innerHTML = `
+      <div class="report-card-top">
+        <div class="report-height">
+          ${report.height} m
+        </div>
+
+        <div class="report-date">
+          ${new Date(report.time).toLocaleString("en-IE")}
+        </div>
+      </div>
+
+      <div class="report-details">
+        <span class="report-tag">
+          ${report.shape}
+        </span>
+
+        <span class="report-tag">
+          ${report.crowd}
+        </span>
+      </div>
+    `;
+
+    reportList.appendChild(card);
+  }
+}
+
+submitReport.addEventListener("click", () => {
+  const height = document.getElementById("reportHeight").value;
+
+  const shape = document.getElementById("reportShape").value;
+
+  const crowd = document.getElementById("reportCrowd").value;
+
+  const reports = JSON.parse(localStorage.getItem("barleycoveReports") || "[]");
+
+  reports.unshift({
+    height,
+    shape,
+    crowd,
+    time: Date.now(),
+  });
+
+  localStorage.setItem(
+    "barleycoveReports",
+    JSON.stringify(reports.slice(0, 20)),
+  );
+
+  loadLocalReports();
+});
+
+loadLocalReports();
+
 initialiseSurfMap();
 
 loadForecast();

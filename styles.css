@@ -362,6 +362,89 @@ h1 {
     color: var(--accent);
 }
 
+.report-form {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) auto;
+    gap: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.report-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.report-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.report-field select,
+#submitReport {
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+}
+
+#submitReport {
+    align-self: end;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.report-list {
+    display: grid;
+    gap: 10px;
+}
+
+.report-card {
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.report-card-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.report-date {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.report-height {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.report-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.report-tag {
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
 .surf-map {
     width: 100%;
     height: 560px;
@@ -464,6 +547,14 @@ h1 {
 
     .conditions-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .report-form {
+        grid-template-columns: 1fr;
+    }
+
+    #submitReport {
+        width: 100%;
     }
 
     .surf-map {
