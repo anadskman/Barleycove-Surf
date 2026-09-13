@@ -1,3 +1,15 @@
+const SUPABASE_URL =
+  "https://uounbdkorblrjvmczmtw.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_NeqKyEfPTeIX4OyYpMWoMA_41Cly2gR";
+
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
 const installButton = document.getElementById("installButton");
 
 const hourlyGrid = document.getElementById("hourlyGrid");
@@ -1018,83 +1030,123 @@ async function loadLocalReports() {
     return;
   }
 
+  reportList.innerHTML = "";
+
   try {
-    const response = await fetch("/.netlify/functions/surf-reports");
+    const { data, error } = await supabaseClient
+      .from("surf_reports")
+      .select("id, wave_height, wave_shape, crowd, created_at")
+      .order("created_at", {
+        ascending: false,
+      })
+      .limit(20);
 
-    const reports = await response.json();
-
-    if (!response.ok) {
-      throw new Error(reports.error || "Could not load surf reports.");
+    if (error) {
+      throw error;
     }
 
-    reportList.innerHTML = "";
+    if (!data || data.length === 0) {
+      const emptyMessage = document.createElement("p");
 
-    for (const report of reports) {
+      emptyMessage.textContent = "No surf reports yet.";
+
+      reportList.appendChild(emptyMessage);
+
+      return;
+    }
+
+    for (const report of data) {
       const card = document.createElement("article");
 
       card.className = "report-card";
 
-      card.innerHTML = `
-        <div class="report-card-top">
-          <div class="report-height">
-            ${Number(report.wave_height).toFixed(1)} m
-          </div>
+      const top = document.createElement("div");
 
-          <div class="report-date">
-            ${new Date(report.created_at).toLocaleString("en-IE")}
-          </div>
-        </div>
+      top.className = "report-card-top";
 
-        <div class="report-details">
-          <span class="report-tag">
-            ${report.wave_shape}
-          </span>
+      const height = document.createElement("div");
 
-          <span class="report-tag">
-            ${report.crowd}
-          </span>
-        </div>
-      `;
+      height.className = "report-height";
+
+      height.textContent = `${Number(report.wave_height).toFixed(1)} m`;
+
+      const date = document.createElement("div");
+
+      date.className = "report-date";
+
+      date.textContent = new Date(report.created_at).toLocaleString("en-IE");
+
+      top.appendChild(height);
+      top.appendChild(date);
+
+      const details = document.createElement("div");
+
+      details.className = "report-details";
+
+      const shape = document.createElement("span");
+
+      shape.className = "report-tag";
+
+      shape.textContent = report.wave_shape;
+
+      const crowd = document.createElement("span");
+
+      crowd.className = "report-tag";
+
+      crowd.textContent = report.crowd;
+
+      details.appendChild(shape);
+      details.appendChild(crowd);
+
+      card.appendChild(top);
+      card.appendChild(details);
 
       reportList.appendChild(card);
     }
   } catch (error) {
     console.error("Could not load surf reports:", error);
 
-    reportList.innerHTML = "<p>Surf reports unavailable.</p>";
+    const errorMessage = document.createElement("p");
+
+    errorMessage.textContent = "Surf reports are currently unavailable.";
+
+    reportList.appendChild(errorMessage);
   }
 }
 
 if (submitReport) {
   submitReport.addEventListener("click", async () => {
-    const waveHeight = document.getElementById("reportHeight").value;
+    const heightElement = document.getElementById("reportHeight");
 
-    const waveShape = document.getElementById("reportShape").value;
+    const shapeElement = document.getElementById("reportShape");
 
-    const crowd = document.getElementById("reportCrowd").value;
+    const crowdElement = document.getElementById("reportCrowd");
+
+    if (!heightElement || !shapeElement || !crowdElement) {
+      return;
+    }
+
+    const waveHeight = Number(heightElement.value);
+
+    const waveShape = shapeElement.value;
+
+    const crowd = crowdElement.value;
 
     submitReport.disabled = true;
+
     submitReport.textContent = "Saving...";
 
     try {
-      const response = await fetch("/.netlify/functions/surf-reports", {
-        method: "POST",
+      const { error } = await supabaseClient.from("surf_reports").insert({
+        wave_height: waveHeight,
 
-        headers: {
-          "Content-Type": "application/json",
-        },
+        wave_shape: waveShape,
 
-        body: JSON.stringify({
-          waveHeight,
-          waveShape,
-          crowd,
-        }),
+        crowd: crowd,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Could not save report.");
+      if (error) {
+        throw error;
       }
 
       await loadLocalReports();
@@ -1104,6 +1156,7 @@ if (submitReport) {
       alert("Could not save the surf report.");
     } finally {
       submitReport.disabled = false;
+
       submitReport.textContent = "Save report";
     }
   });

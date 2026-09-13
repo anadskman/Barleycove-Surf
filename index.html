@@ -88,14 +88,15 @@
                             <p class="eyebrow">Local observations</p>
                             <h2>Surf reports</h2>
                         </div>
-
+                
                         <span class="section-note">Actual conditions</span>
                     </div>
-
+                
                     <div class="report-form">
                         <div class="report-field">
                             <label for="reportHeight">Wave height</label>
-                            <section id="reportHeight">
+                
+                            <select id="reportHeight">
                                 <option value="0.2">0.2 m</option>
                                 <option value="0.4">0.4 m</option>
                                 <option value="0.6">0.6 m</option>
@@ -105,9 +106,39 @@
                                 <option value="1.5">1.5 m</option>
                                 <option value="2.0">2.0 m</option>
                                 <option value="2.5">2.5 m+</option>
-                            </section>
+                            </select>
                         </div>
+                
+                        <div class="report-field">
+                            <label for="reportShape">Wave shape</label>
+                
+                            <select id="reportShape">
+                                <option value="poor">Poor</option>
+                                <option value="messy">Messy</option>
+                                <option value="okay">Okay</option>
+                                <option value="clean">Clean</option>
+                                <option value="excellent">Excellent</option>
+                            </select>
+                        </div>
+                
+                        <div class="report-field">
+                            <label for="reportCrowd">Crowd</label>
+                
+                            <select id="reportCrowd">
+                                <option value="empty">Empty</option>
+                                <option value="quiet">Quiet</option>
+                                <option value="normal">Normal</option>
+                                <option value="busy">Busy</option>
+                                <option value="packed">Packed</option>
+                            </select>
+                        </div>
+                
+                        <button id="submitReport" type="button">
+                            Save report
+                        </button>
                     </div>
+                
+                    <div id="reportList" class="report-list"></div>
                 </section>
 
                 <section class="map-section">
@@ -129,6 +160,7 @@
         </footer>
 
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script src="app.js"></script>
     </body>
 </html>
