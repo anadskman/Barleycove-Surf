@@ -1,12 +1,13 @@
 {
   "name": "Barleycove Surf",
   "short_name": "Barleycove",
-  "description": "Barleycove surf conditions and local forecast.",
+  "description": "Barleycove surf conditions, forecast and local reports.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#071619",
   "theme_color": "#071619",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/icons/icon-192.png",
