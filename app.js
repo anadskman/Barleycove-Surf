@@ -139,15 +139,53 @@ function scoreTide(tide) {
     return 0;
   }
 
-  if (tide.state === "Rising") {
-    return 10;
-  }
+  const height = tide.height;
 
-  if (tide.state === "Falling") {
+  if (height === null || height === undefined) {
+    if (tide.state === "Rising") {
+      return 8;
+    }
+
+    if (tide.state === "Falling") {
+      return 5;
+    }
+
     return 6;
   }
 
-  return 8;
+  if (tide.state === "Rising") {
+    if (height <= 0.8) {
+      return 10;
+    }
+
+    if (height <= 1.5) {
+      return 9;
+    }
+
+    if (height <= 2.5) {
+      return 8;
+    }
+
+    return 7;
+  }
+
+  if (tide.state === "Falling") {
+    if (height <= 0.8) {
+      return 7;
+    }
+
+    if (height <= 1.5) {
+      return 6;
+    }
+
+    if (height <= 2.5) {
+      return 5;
+    }
+
+    return 4;
+  }
+
+  return 6;
 }
 
 function getWindConditions(data, index) {
@@ -187,7 +225,7 @@ function getWindConditions(data, index) {
  * Swell period:    20
  * Wind direction:  20
  * Wind speed:       5
- * Tide:            10
+ * Tide:             10
  */
 
 /*
@@ -450,6 +488,14 @@ function getSurfRatingReason(factors, conditions) {
     reasons.push("limited swell exposure");
   }
 
+  if (factors.tide >= 9) {
+    reasons.push("low tide pushing in");
+  } else if (factors.tide >= 7) {
+    reasons.push("favourable rising tide");
+  } else if (factors.tide <= 4) {
+    reasons.push("less favourable tide");
+  }
+
   if (reasons.length === 0) {
     return "Mixed conditions.";
   }
@@ -460,6 +506,27 @@ function getSurfRatingReason(factors, conditions) {
       .map((reason) => reason.charAt(0).toUpperCase() + reason.slice(1))
       .join(". ") + "."
   );
+}
+
+function getForecastConfidence(data, index) {
+  const values = [
+    getValue(data, "swell1_height-surface", index),
+    getValue(data, "swell1_period-surface", index),
+    getValue(data, "swell1_direction-surface", index),
+    getWindConditions(data, index),
+  ];
+
+  const available = values.filter((value) => value !== null).length;
+
+  if (available >= 4) {
+    return "High";
+  }
+
+  if (available >= 3) {
+    return "Medium";
+  }
+
+  return "Low";
 }
 
 function calculateSurfScore(data, index = 0) {
@@ -512,6 +579,8 @@ function calculateSurfScore(data, index = 0) {
     rating: rating.label,
 
     ratingClass: rating.className,
+
+    confidence: getForecastConfidence(data, index),
 
     reason: getSurfRatingReason(factors, {
       swellHeight,
@@ -764,6 +833,8 @@ function displayCurrentConditions(data) {
   ratingLabel.textContent = surfScore.rating;
 
   ratingReason.textContent = surfScore.reason;
+
+  ratingReason.textContent += ` Forecast confidence: ${surfScore.confidence}.`;
 }
 
 function formatForecastTime(timestamp, index) {
