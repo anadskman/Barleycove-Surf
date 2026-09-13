@@ -175,12 +175,14 @@ function getWindConditions(data, index) {
   };
 }
 
-/*NOTE!!!
+/*
+ * NOTE!!!
  * SURF SCORING
  *
  * Maximum score: 100
  *
- * Swell direction: 30
+ * Swell direction: 20
+ * Swell exposure:  10
  * Swell height:    15
  * Swell period:    20
  * Wind direction:  20
@@ -202,27 +204,27 @@ function scoreSwellDirection(direction) {
   const difference = directionDifference(direction, 225);
 
   if (difference <= 20) {
-    return 30;
+    return 20;
   }
 
   if (difference <= 35) {
-    return 27;
-  }
-
-  if (difference <= 50) {
-    return 23;
-  }
-
-  if (direction >= 180 && direction <= 270) {
     return 18;
   }
 
+  if (difference <= 50) {
+    return 15;
+  }
+
+  if (direction >= 180 && direction <= 270) {
+    return 12;
+  }
+
   if (direction >= 160 && direction <= 290) {
-    return 10;
+    return 7;
   }
 
   if (direction >= 140 && direction <= 310) {
-    return 5;
+    return 3;
   }
 
   return 0;
@@ -418,7 +420,7 @@ function getSurfRatingReason(factors, conditions) {
     reasons.push("poor swell direction");
   }
 
-  if (factors.swellHeight >= 18) {
+  if (factors.swellHeight >= 14) {
     reasons.push("good swell size");
   } else if (factors.swellHeight <= 6) {
     reasons.push("small swell");
@@ -436,10 +438,16 @@ function getSurfRatingReason(factors, conditions) {
     reasons.push("poor wind direction");
   }
 
-  if (factors.windSpeed >= 9) {
+  if (factors.windSpeed >= 4) {
     reasons.push("light wind");
-  } else if (factors.windSpeed <= 2) {
+  } else if (factors.windSpeed <= 1) {
     reasons.push("strong wind");
+  }
+
+  if (factors.swellExposure >= 9) {
+    reasons.push("good beach exposure");
+  } else if (factors.swellExposure <= 4) {
+    reasons.push("limited swell exposure");
   }
 
   if (reasons.length === 0) {
@@ -489,6 +497,7 @@ function calculateSurfScore(data, index = 0) {
 
   const score =
     factors.swellDirection +
+    factors.swellExposure +
     factors.swellHeight +
     factors.period +
     factors.windDirection +
