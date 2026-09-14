@@ -146,7 +146,7 @@ export default async () => {
 
     const windPromise = getWindyForecast(
       "iconEu",
-      ["wind", "windGust"],
+      ["wind", "windGust", "temp"],
       apiKey,
     );
 

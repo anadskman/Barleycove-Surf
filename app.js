@@ -1,18 +1,13 @@
-const SUPABASE_URL =
-  "https://uounbdkorblrjvmczmtw.supabase.co";
+const SUPABASE_URL = "https://uounbdkorblrjvmczmtw.supabase.co";
 
-const SUPABASE_KEY =
-  "sb_publishable_NeqKyEfPTeIX4OyYpMWoMA_41Cly2gR";
+const SUPABASE_KEY = "sb_publishable_NeqKyEfPTeIX4OyYpMWoMA_41Cly2gR";
 
-const supabaseClient =
-  window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const installButton = document.getElementById("installButton");
-
 const hourlyGrid = document.getElementById("hourlyGrid");
+const forecastDays = document.getElementById("forecastDays");
+const forecastUpdated = document.getElementById("forecastUpdated");
 
 const ratingLabel = document.getElementById("ratingLabel");
 const ratingReason = document.getElementById("ratingReason");
@@ -30,35 +25,69 @@ const tideDetails = document.getElementById("tideDetails");
 const waterTemp = document.getElementById("waterTemp");
 const waterDetails = document.getElementById("waterDetails");
 
+const conditionInfo = document.getElementById("conditionInfo");
+const conditionInfoTitle = document.getElementById("conditionInfoTitle");
+const conditionInfoTime = document.getElementById("conditionInfoTime");
+
 let deferredInstallPrompt = null;
+let forecastData = null;
+let selectedForecastIndex = 0;
+let selectedDayKey = null;
+let selectedCondition = "swell";
 
-window.addEventListener("beforeinstallprompt", (event) => {
-  event.preventDefault();
+function isStandalone() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true
+  );
+}
 
-  deferredInstallPrompt = event;
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
 
-  installButton.hidden = false;
-});
-
-installButton.addEventListener("click", async () => {
-  if (!deferredInstallPrompt) {
+function showInstallHelp() {
+  if (isStandalone()) {
+    installButton.hidden = true;
     return;
   }
 
-  deferredInstallPrompt.prompt();
+  installButton.hidden = false;
+}
 
-  await deferredInstallPrompt.userChoice;
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  showInstallHelp();
+});
 
-  deferredInstallPrompt = null;
+installButton.addEventListener("click", async () => {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installButton.hidden = true;
+    return;
+  }
 
-  installButton.hidden = true;
+  if (isIOS()) {
+    alert(
+      "On iPhone or iPad, use the Share button in Safari and choose 'Add to Home Screen'.",
+    );
+    return;
+  }
+
+  alert(
+    "Open your browser's install or Add to Home Screen option to install Barleycove Surf.",
+  );
 });
 
 window.addEventListener("appinstalled", () => {
   deferredInstallPrompt = null;
-
   installButton.hidden = true;
 });
+
+showInstallHelp();
 
 function degreesToCompass(degrees) {
   const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
@@ -617,29 +646,45 @@ function calculateSurfScore(data, index = 0) {
 
 async function loadForecast() {
   ratingLabel.textContent = "Loading forecast";
-
   ratingReason.textContent = "Getting the latest Barleycove conditions...";
-
   scoreValue.textContent = "--";
 
   try {
     const response = await fetch("/.netlify/functions/surf-forecast");
-
     const data = await response.json();
 
     if (!response.ok) {
       throw new Error(data.error || "Forecast request failed.");
     }
 
-    displayCurrentConditions(data);
+    forecastData = data;
+
+    const now = Date.now();
+
+    selectedForecastIndex = 0;
+    let smallestDifference = Infinity;
+
+    for (let i = 0; i < data.ts.length; i++) {
+      const difference = Math.abs(data.ts[i] - now);
+
+      if (difference < smallestDifference) {
+        smallestDifference = difference;
+        selectedForecastIndex = i;
+      }
+    }
+
+    selectedDayKey = getDayKey(data.ts[selectedForecastIndex]);
+
+    displayForecastDays(data);
+    displayCurrentConditions(data, selectedForecastIndex);
+    displayHourlyForecast(data, selectedDayKey);
+    updateConditionInfo(data, selectedForecastIndex, selectedCondition);
   } catch (error) {
     console.error("Forecast error:", error);
 
     ratingLabel.textContent = "Forecast unavailable";
-
     ratingReason.textContent =
       "We could not load the latest forecast. Check the API connection.";
-
     scoreValue.textContent = "--";
   }
 }
@@ -698,9 +743,7 @@ function updateSwellMap(data, index) {
   }
 
   const beach = [51.46716, -9.77497];
-
   const arrowLength = 0.004;
-
   const directionRadians = (swellDirection * Math.PI) / 180;
 
   const endPoint = [
@@ -728,9 +771,7 @@ function updateSwellMap(data, index) {
   }
 
   const approachAngle = getSwellApproachAngle(swellDirection);
-
   const exposureScore = scoreSwellExposure(swellDirection);
-
   const directionText = degreesToCompass(swellDirection);
 
   const labelText =
@@ -740,7 +781,6 @@ function updateSwellMap(data, index) {
 
   if (window.swellDirectionLabel) {
     window.swellDirectionLabel.setLatLng(endPoint);
-
     window.swellDirectionLabel.setContent(labelText);
   } else {
     window.swellDirectionLabel = L.tooltip({
@@ -754,217 +794,395 @@ function updateSwellMap(data, index) {
   }
 }
 
-function displayCurrentConditions(data) {
-  if (!data.ts || data.ts.length === 0) {
-    throw new Error("Windy returned no forecast timestamps.");
-  }
-
-  const now = Date.now();
-
-  let closestIndex = 0;
-
-  let smallestDifference = Infinity;
-
-  for (let i = 0; i < data.ts.length; i++) {
-    const difference = Math.abs(data.ts[i] - now);
-
-    if (difference < smallestDifference) {
-      smallestDifference = difference;
-
-      closestIndex = i;
-    }
-  }
-
-  displayHourlyForecast(data);
-
-  updateSwellMap(data, closestIndex);
-
-  const swellHeightValue = getValue(
-    data,
-    "swell1_height-surface",
-    closestIndex,
-  );
-
-  const swellPeriodValue = getValue(
-    data,
-    "swell1_period-surface",
-    closestIndex,
-  );
-
-  const swellDirectionValue = getValue(
-    data,
-    "swell1_direction-surface",
-    closestIndex,
-  );
-
-  if (swellHeightValue !== null) {
-    swellHeight.textContent = `${swellHeightValue.toFixed(1)} m`;
-  } else {
-    swellHeight.textContent = "--";
-  }
-
-  if (swellPeriodValue !== null && swellDirectionValue !== null) {
-    swellDetails.textContent = `${swellPeriodValue.toFixed(0)}s · ${degreesToCompass(swellDirectionValue)}`;
-  } else {
-    swellDetails.textContent = "--";
-  }
-
-  const wind = getWindConditions(data, closestIndex);
-
-  if (wind !== null) {
-    windSpeed.textContent = `${wind.speed.toFixed(0)} kt`;
-
-    windDetails.textContent = degreesToCompass(wind.direction);
-  } else {
-    windSpeed.textContent = "--";
-
-    windDetails.textContent = "--";
-  }
-
-  const currentTide = getTideConditions(data, data.ts[closestIndex]);
-
-  if (currentTide) {
-    tideState.textContent = currentTide.state;
-
-    tideDetails.textContent =
-      `${currentTide.height.toFixed(1)} m · ` + `Predicted level`;
-  } else {
-    tideState.textContent = "--";
-
-    tideDetails.textContent = "--";
-  }
-
-  waterTemp.textContent = "Coming soon";
-
-  waterDetails.textContent = "Water temperature in Step 5";
-
-  const surfScore = calculateSurfScore(data, closestIndex);
-
-  scoreValue.textContent = surfScore.score;
-
-  ratingLabel.textContent = surfScore.rating;
-
-  ratingReason.textContent = surfScore.reason;
-
-  ratingReason.textContent += ` Forecast confidence: ${surfScore.confidence}.`;
-}
-
-function formatForecastTime(timestamp, index) {
+function getDayKey(timestamp) {
   const date = new Date(timestamp);
 
-  if (index === 0) {
-    return "Now";
+  return [date.getFullYear(), date.getMonth(), date.getDate()].join("-");
+}
+
+function formatDayLabel(timestamp) {
+  const date = new Date(timestamp);
+  const today = new Date();
+
+  if (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  ) {
+    return "Today";
   }
 
-  return date.toLocaleTimeString("en-IE", {
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  if (
+    date.getFullYear() === tomorrow.getFullYear() &&
+    date.getMonth() === tomorrow.getMonth() &&
+    date.getDate() === tomorrow.getDate()
+  ) {
+    return "Tomorrow";
+  }
+
+  return date.toLocaleDateString("en-IE", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function formatForecastDateTime(timestamp) {
+  return new Date(timestamp).toLocaleString("en-IE", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
 }
 
-function displayHourlyForecast(data) {
-  if (!data.ts || data.ts.length === 0) {
-    hourlyGrid.innerHTML = "<p>Hourly forecast unavailable.</p>";
-
+function displayForecastDays(data) {
+  if (!forecastDays || !data.ts) {
     return;
   }
 
-  const now = Date.now();
+  const days = [];
 
-  let currentIndex = 0;
+  for (const timestamp of data.ts) {
+    const key = getDayKey(timestamp);
 
-  let smallestDifference = Infinity;
-
-  for (let i = 0; i < data.ts.length; i++) {
-    const difference = Math.abs(data.ts[i] - now);
-
-    if (difference < smallestDifference) {
-      smallestDifference = difference;
-
-      currentIndex = i;
+    if (!days.some((day) => day.key === key)) {
+      days.push({
+        key,
+        timestamp,
+      });
     }
   }
 
-  const hoursToShow = 12;
+  forecastDays.innerHTML = days
+    .map((day) => {
+      const selected = day.key === selectedDayKey ? " selected" : "";
 
-  const endIndex = Math.min(currentIndex + hoursToShow, data.ts.length);
+      return `
+        <button class="forecast-day${selected}" type="button" data-day="${day.key}">${formatDayLabel(day.timestamp)}</button>
+      `;
+    })
+    .join("");
 
-  let html = "";
+  forecastDays.querySelectorAll(".forecast-day").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedDayKey = button.dataset.day;
 
-  for (let index = currentIndex; index < endIndex; index++) {
-    const swellHeight = getValue(data, "swell1_height-surface", index);
+      const index = forecastData.ts.findIndex(
+        (timestamp) => getDayKey(timestamp) === selectedDayKey,
+      );
 
-    const swellPeriod = getValue(data, "swell1_period-surface", index);
+      if (index === -1) {
+        return;
+      }
 
-    const swellDirection = getValue(data, "swell1_direction-surface", index);
+      selectedForecastIndex = index;
 
-    const wind = getWindConditions(data, index);
+      displayForecastDays(forecastData);
+      displayCurrentConditions(forecastData, selectedForecastIndex);
+      displayHourlyForecast(forecastData, selectedDayKey);
+      updateConditionInfo(
+        forecastData,
+        selectedForecastIndex,
+        selectedCondition,
+      );
+    });
+  });
+}
 
-    const hourlyScore = calculateSurfScore(data, index);
+function displayCurrentConditions(data, index) {
+  if (!data.ts || data.ts.length === 0) {
+    throw new Error("Windy returned no forecast timestamps.");
+  }
 
-    const hourlyTide = getTideConditions(data, data.ts[index]);
+  selectedForecastIndex = index;
 
-    const timeLabel = formatForecastTime(data.ts[index], index - currentIndex);
+  const timestamp = data.ts[index];
 
-    const swellHeightText =
-      swellHeight !== null ? `${swellHeight.toFixed(1)} m` : "--";
+  if (forecastUpdated) {
+    forecastUpdated.textContent = formatForecastDateTime(timestamp);
+  }
 
-    let swellDetailsText = "--";
+  const swellHeightValue = getValue(data, "swell1_height-surface", index);
 
-    if (swellPeriod !== null && swellDirection !== null) {
-      swellDetailsText =
-        `${swellPeriod.toFixed(0)}s · ` + `${degreesToCompass(swellDirection)}`;
-    }
+  const swellPeriodValue = getValue(data, "swell1_period-surface", index);
 
-    const windSpeedText = wind !== null ? `${wind.speed.toFixed(0)} kt` : "--";
+  const swellDirectionValue = getValue(data, "swell1_direction-surface", index);
 
-    const windDetailsText =
-      wind !== null ? degreesToCompass(wind.direction) : "--";
+  swellHeight.textContent =
+    swellHeightValue !== null ? `${swellHeightValue.toFixed(1)} m` : "--";
 
-    const isCurrent = index === currentIndex;
+  swellDetails.textContent =
+    swellPeriodValue !== null && swellDirectionValue !== null
+      ? `${swellPeriodValue.toFixed(0)}s · ${degreesToCompass(swellDirectionValue)}`
+      : "--";
 
-    const tideText = hourlyTide ? hourlyTide.state : "--";
+  const wind = getWindConditions(data, index);
 
-    html += `
-      <article class="hourly-card${isCurrent ? " current" : ""}">
-        <div class="hourly-time">
-          ${timeLabel}
-        </div>
+  if (wind !== null) {
+    windSpeed.textContent = `${wind.speed.toFixed(0)} kt`;
+    windDetails.textContent = degreesToCompass(wind.direction);
+  } else {
+    windSpeed.textContent = "--";
+    windDetails.textContent = "--";
+  }
 
-        <div class="hourly-swell">
-          <div class="hourly-swell-height">
-            ${swellHeightText}
+  const currentTide = getTideConditions(data, timestamp);
+
+  if (currentTide) {
+    tideState.textContent = currentTide.state;
+    tideDetails.textContent = `${currentTide.height.toFixed(1)} m · ${formatTideTime(timestamp)}`;
+  } else {
+    tideState.textContent = "--";
+    tideDetails.textContent = "Tide data unavailable";
+  }
+
+  const airTemp = getValue(data, "temp-surface", index);
+
+  waterTemp.textContent = "--";
+  waterDetails.textContent =
+    airTemp !== null
+      ? "Water temperature unavailable"
+      : "No water temperature data";
+
+  const surfScore = calculateSurfScore(data, index);
+
+  scoreValue.textContent = surfScore.score;
+  ratingLabel.textContent = surfScore.rating;
+  ratingReason.textContent = `${surfScore.reason} Forecast confidence: ${surfScore.confidence}.`;
+
+  updateSwellMap(data, index);
+  updateSelectedHourlyCard();
+  updateConditionInfo(data, index, selectedCondition);
+
+  document.querySelectorAll(".condition-card").forEach((card) => {
+    card.classList.toggle(
+      "selected",
+      card.dataset.condition === selectedCondition,
+    );
+  });
+}
+
+function displayHourlyForecast(data, dayKey) {
+  if (!hourlyGrid || !data.ts || data.ts.length === 0) {
+    return;
+  }
+
+  const indices = data.ts
+    .map((timestamp, index) => ({ timestamp, index }))
+    .filter((item) => getDayKey(item.timestamp) === dayKey)
+    .map((item) => item.index);
+
+  if (indices.length === 0) {
+    hourlyGrid.innerHTML = "<p>Forecast unavailable for this day.</p>";
+    return;
+  }
+
+  hourlyGrid.innerHTML = indices
+    .map((index) => {
+      const swellHeight = getValue(data, "swell1_height-surface", index);
+      const swellPeriod = getValue(data, "swell1_period-surface", index);
+      const swellDirection = getValue(data, "swell1_direction-surface", index);
+      const wind = getWindConditions(data, index);
+      const hourlyScore = calculateSurfScore(data, index);
+      const hourlyTide = getTideConditions(data, data.ts[index]);
+
+      const isSelected = index === selectedForecastIndex;
+      const isCurrent = Math.abs(data.ts[index] - Date.now()) < 60 * 60 * 1000;
+
+      const swellHeightText =
+        swellHeight !== null ? `${swellHeight.toFixed(1)} m` : "--";
+
+      const swellDetailsText =
+        swellPeriod !== null && swellDirection !== null
+          ? `${swellPeriod.toFixed(0)}s · ${degreesToCompass(swellDirection)}`
+          : "--";
+
+      const windSpeedText =
+        wind !== null ? `${wind.speed.toFixed(0)} kt` : "--";
+
+      const windDetailsText =
+        wind !== null ? degreesToCompass(wind.direction) : "--";
+
+      const tideText = hourlyTide
+        ? `${hourlyTide.state} · ${hourlyTide.height.toFixed(1)} m`
+        : "Unavailable";
+
+      return `
+        <article class="hourly-card${isCurrent ? " current" : ""}${isSelected ? " selected" : ""}" data-index="${index}" tabindex="0" role="button" aria-label="Select forecast for ${formatForecastDateTime(data.ts[index])}">
+          <div class="hourly-time">
+            ${new Date(data.ts[index]).toLocaleTimeString("en-IE", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            })}
           </div>
 
-          <div class="hourly-swell-details">
-            ${swellDetailsText}
-          </div>
-        </div>
-
-        <div class="hourly-wind">
-          <div class="hourly-wind-speed">
-            ${windSpeedText}
+          <div class="hourly-date">
+            ${new Date(data.ts[index]).toLocaleDateString("en-IE", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+            })}
           </div>
 
-          <div class="hourly-wind-details">
-            Wind ${windDetailsText}
+          <div class="hourly-swell">
+            <div class="hourly-swell-height">${swellHeightText}</div>
+            <div class="hourly-swell-details">${swellDetailsText}</div>
           </div>
-        </div>
 
-        <div class="hourly-tide">
-          Tide ${tideText}
-        </div>
+          <div class="hourly-wind">
+            <div class="hourly-wind-speed">${windSpeedText}</div>
+            <div class="hourly-wind-details">Wind ${windDetailsText}</div>
+          </div>
 
-        <div class="hourly-score">
-          ${hourlyScore.score}/100
-        </div>
-      </article>
+          <div class="hourly-tide">Tide ${tideText}</div>
+
+          <div class="hourly-score">${hourlyScore.score}/100</div>
+        </article>
+      `;
+    })
+    .join("");
+
+  hourlyGrid.querySelectorAll(".hourly-card").forEach((card) => {
+    const select = () => {
+      const index = Number(card.dataset.index);
+
+      selectedForecastIndex = index;
+      selectedDayKey = getDayKey(data.ts[index]);
+
+      displayForecastDays(data);
+      displayCurrentConditions(data, index);
+      displayHourlyForecast(data, selectedDayKey);
+    };
+
+    card.addEventListener("click", select);
+
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        select();
+      }
+    });
+  });
+}
+
+function updateSelectedHourlyCard() {
+  if (!hourlyGrid) {
+    return;
+  }
+
+  hourlyGrid.querySelectorAll(".hourly-card").forEach((card) => {
+    card.classList.toggle(
+      "selected",
+      Number(card.dataset.index) === selectedForecastIndex,
+    );
+  });
+}
+
+function updateConditionInfo(data, index, condition) {
+  if (!conditionInfo || !conditionInfoTitle || !conditionInfoTime) {
+    return;
+  }
+
+  const timestamp = data.ts[index];
+  const swellDirection = getValue(data, "swell1_direction-surface", index);
+  const swellHeightValue = getValue(data, "swell1_height-surface", index);
+  const swellPeriodValue = getValue(data, "swell1_period-surface", index);
+  const wind = getWindConditions(data, index);
+  const tide = getTideConditions(data, timestamp);
+  const score = calculateSurfScore(data, index);
+
+  conditionInfoTitle.textContent =
+    condition === "swell"
+      ? "Swell"
+      : condition === "wind"
+        ? "Wind"
+        : condition === "tide"
+          ? "Tide"
+          : "Water";
+
+  conditionInfoTime.textContent = formatForecastDateTime(timestamp);
+
+  if (condition === "swell") {
+    const directionText =
+      swellDirection !== null ? degreesToCompass(swellDirection) : "--";
+
+    const exposure =
+      swellDirection !== null ? scoreSwellExposure(swellDirection) : 0;
+
+    const approach =
+      swellDirection !== null ? getSwellApproachAngle(swellDirection) : null;
+
+    conditionInfo.innerHTML = `
+      <h3>${swellHeightValue !== null ? swellHeightValue.toFixed(1) + " m" : "--"} swell from ${directionText}</h3>
+      <p>
+        ${swellPeriodValue !== null ? swellPeriodValue.toFixed(0) + " second period" : "Period unavailable"}.
+        The selected swell is ${approach !== null ? approach.toFixed(0) + "°" : "--"} from the beach-facing direction and scores ${exposure}/10 for Barleycove exposure.
+      </p>
+      <div class="info-grid">
+        <div class="info-item"><strong>Direction</strong><span>${directionText}</span></div>
+        <div class="info-item"><strong>Period</strong><span>${swellPeriodValue !== null ? swellPeriodValue.toFixed(0) + " s" : "--"}</span></div>
+        <div class="info-item"><strong>Exposure</strong><span>${exposure}/10</span></div>
+      </div>
+    `;
+  } else if (condition === "wind") {
+    conditionInfo.innerHTML = `
+      <h3>${wind ? wind.speed.toFixed(0) + " kt " + degreesToCompass(wind.direction) : "--"}</h3>
+      <p>Northerly and north-easterly winds are generally the most useful direction for Barleycove. This wind contributes ${score.factors.windDirection}/20 for direction and ${score.factors.windSpeed}/5 for speed.</p>
+      <div class="info-grid">
+        <div class="info-item"><strong>Direction</strong><span>${wind ? degreesToCompass(wind.direction) : "--"}</span></div>
+        <div class="info-item"><strong>Speed</strong><span>${wind ? wind.speed.toFixed(0) + " kt" : "--"}</span></div>
+        <div class="info-item"><strong>Wind score</strong><span>${score.factors.windDirection + score.factors.windSpeed}/25</span></div>
+      </div>
+    `;
+  } else if (condition === "tide") {
+    conditionInfo.innerHTML = `
+      <h3>${tide ? tide.state + " tide" : "Tide unavailable"}</h3>
+      <p>
+        ${tide ? tide.height.toFixed(1) + " m predicted level. Previous and next tide points are used to determine whether the tide is rising or falling." : "The tide forecast could not be loaded for this time."}
+      </p>
+      <div class="info-grid">
+        <div class="info-item"><strong>Level</strong><span>${tide ? tide.height.toFixed(1) + " m" : "--"}</span></div>
+        <div class="info-item"><strong>State</strong><span>${tide ? tide.state : "--"}</span></div>
+        <div class="info-item"><strong>Score</strong><span>${score.factors.tide}/10</span></div>
+      </div>
+    `;
+  } else {
+    conditionInfo.innerHTML = `
+      <h3>Water temperature</h3>
+      <p>A reliable local sea-surface temperature feed is not currently included in the forecast response, so this value is left blank rather than showing air temperature as water temperature.</p>
     `;
   }
-
-  hourlyGrid.innerHTML = html;
 }
+
+document.querySelectorAll(".condition-card").forEach((card) => {
+  card.dataset.condition = card
+    .querySelector(".condition-label")
+    ?.textContent.trim()
+    .toLowerCase();
+
+  card.addEventListener("click", () => {
+    selectedCondition = card.dataset.condition;
+
+    if (forecastData) {
+      updateConditionInfo(
+        forecastData,
+        selectedForecastIndex,
+        selectedCondition,
+      );
+
+      document.querySelectorAll(".condition-card").forEach((item) => {
+        item.classList.toggle("selected", item === card);
+      });
+    }
+  });
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -995,30 +1213,18 @@ function initialiseSurfMap() {
 
   L.marker(barleycove).addTo(map).bindPopup("Barleycove Beach").openPopup();
 
-  const surfZone = [
-    [51.4557, -9.7845],
-    [51.4548, -9.7805],
-    [51.4543, -9.776],
-    [51.4544, -9.7715],
-  ];
-
-  L.polyline(surfZone, {
-    weight: 5,
-    opacity: 0.9,
+  L.circle(barleycove, {
+    radius: 350,
+    weight: 2,
+    opacity: 0.7,
+    fillOpacity: 0.08,
   })
     .addTo(map)
-    .bindTooltip("Barleycove surf zone");
+    .bindTooltip("Barleycove surf area");
 
-  const beachDirectionStart = [51.4545, -9.778];
-  const beachDirectionEnd = [51.457, -9.778];
-
-  L.polyline([beachDirectionStart, beachDirectionEnd], {
-    weight: 3,
-    dashArray: "8 8",
-    opacity: 0.8,
-  })
-    .addTo(map)
-    .bindTooltip("Approx. beach-facing direction");
+  L.marker(barleycove, {
+    opacity: 0,
+  }).addTo(map);
 }
 
 const submitReport = document.getElementById("submitReport");

@@ -29,7 +29,7 @@
                     <p class="hero-copy">a forecast built around Barleycove, with the conditions that actually matter for deciding whether it is worth going out.</p>
                 </div>
             </section>
-
+        
             <section class="content" aria-label="Current surf conditions">
                 <div class="status-card">
                     <div>
@@ -42,60 +42,75 @@
                         <span>/100</span>
                     </div>
                 </div>
-
+            
                 <div class="conditions-grid">
-                    <article class="conditions-card">
-                        <span class="conditions-label">Swell</span>
+                    <article class="condition-card">
+                        <span class="condition-label">Swell</span>
                         <strong id="swellHeight">--</strong>
                         <span id="swellDetails">--</span>
                     </article>
-
-                    <article class="conditions-card">
-                        <span class="conditions-label">Wind</span>
+                
+                    <article class="condition-card">
+                        <span class="condition-label">Wind</span>
                         <strong id="windSpeed">--</strong>
                         <span id="windDetails">--</span>
                     </article>
-
-                    <article class="conditions-card">
-                        <span class="conditions-label">Tide</span>
+                
+                    <article class="condition-card">
+                        <span class="condition-label">Tide</span>
                         <strong id="tideState">--</strong>
                         <span id="tideDetails">--</span>
                     </article>
-
-                    <article class="conditions-card">
-                        <span class="conditions-label">Water</span>
+                
+                    <article class="condition-card">
+                        <span class="condition-label">Water</span>
                         <strong id="waterTemp">--</strong>
                         <span id="waterDetails">--</span>
                     </article>
                 </div>
-
+            
                 <section class="forecast-section">
                     <div class="section-heading">
                         <div>
-                            <p class="eyebrow">Today</p>
+                            <p class="eyebrow">Forecast</p>
                             <h2>Best time to go</h2>
                         </div>
                     
-                        <span class="section-note">Hourly forecast</span>
+                        <span class="section-note" id="forecastUpdated">Hourly forecast</span>
                     </div>
+                
+                    <div class="forecast-days" id="forecastDays"></div>
                 
                     <div class="hourly-grid" id="hourlyGrid"></div>
                 </section>
-
+            
+                <section class="condition-info-section" id="conditionInfoSection">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Selected forecast</p>
+                            <h2 id="conditionInfoTitle">Swell</h2>
+                        </div>
+                    
+                        <span class="section-note" id="conditionInfoTime">--</span>
+                    </div>
+                
+                    <div class="condition-info" id="conditionInfo">Select a forecast card or condition above to see more detail.</div>
+                </section>
+            
                 <section class="reports-section">
                     <div class="section-heading">
                         <div>
                             <p class="eyebrow">Local observations</p>
                             <h2>Surf reports</h2>
                         </div>
-                
+                    
                         <span class="section-note">Actual conditions</span>
                     </div>
                 
                     <div class="report-form">
                         <div class="report-field">
                             <label for="reportHeight">Wave height</label>
-                
+                        
                             <select id="reportHeight">
                                 <option value="0.2">0.2 m</option>
                                 <option value="0.4">0.4 m</option>
@@ -108,10 +123,10 @@
                                 <option value="2.5">2.5 m+</option>
                             </select>
                         </div>
-                
+                    
                         <div class="report-field">
                             <label for="reportShape">Wave shape</label>
-                
+                        
                             <select id="reportShape">
                                 <option value="poor">Poor</option>
                                 <option value="messy">Messy</option>
@@ -120,10 +135,10 @@
                                 <option value="excellent">Excellent</option>
                             </select>
                         </div>
-                
+                    
                         <div class="report-field">
                             <label for="reportCrowd">Crowd</label>
-                
+                        
                             <select id="reportCrowd">
                                 <option value="empty">Empty</option>
                                 <option value="quiet">Quiet</option>
@@ -132,15 +147,13 @@
                                 <option value="packed">Packed</option>
                             </select>
                         </div>
-                
-                        <button id="submitReport" type="button">
-                            Save report
-                        </button>
+                    
+                        <button id="submitReport" type="button">Save report</button>
                     </div>
                 
                     <div id="reportList" class="report-list"></div>
                 </section>
-
+            
                 <section class="map-section">
                     <div class="section-heading">
                         <div>
@@ -149,9 +162,89 @@
                         </div>
                         <span class="section-note">Nearshore model</span>
                     </div>
-
+                
                     <div id="surfMap" class="surf-map"></div>
                 </section>
+            </section>
+            <section class="explanation-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">How it works</p>
+                        <h2>Understanding the forecast</h2>
+                    </div>
+                </div>
+            
+                <div class="explanation-grid">
+                    <article class="explanation-card">
+                        <h3>Swell</h3>
+                        <p>Wave energy arriving from offshore. Height tells you how much energy there is, period tells you how long the waves are spaced apart, and direction tells you where the swell is coming from.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Wind</h3>
+                        <p>Wind speed and direction at Barleycove. Northerly and north-easterly winds are generally the most favourable because they are offshore for the beach.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Tide</h3>
+                        <p>The predicted water level and whether the tide is rising or falling. Barleycove can work on different tides, but a low-to-rising tide is generally given a small advantage.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Surf score</h3>
+                        <p>The score combines swell direction, exposure, height, period, wind direction, wind speed and tide. It is a guide for Barleycove, not a guarantee of what the waves will look like.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Forecast confidence</h3>
+                        <p>Confidence is based on how much of the forecast data is available. High means the main swell and wind inputs are present, while lower confidence means some inputs are missing.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Map</h3>
+                        <p>The map shows the Barleycove surf point and the current selected swell direction. The closer the swell is to the beach's useful exposure, the better the exposure part of the score.</p>
+                    </article>
+                </div>
+            </section>
+            <section class="explanation-section" id="explanation">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">How it works</p>
+                        <h2>Understanding the forecast</h2>
+                    </div>
+                </div>
+            
+                <div class="explanation-grid">
+                    <article class="explanation-card">
+                        <h3>Swell</h3>
+                        <p>Wave energy arriving from offshore. Height tells you how much energy there is, period tells you how far apart the waves are, and direction tells you where the swell is coming from.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Wind</h3>
+                        <p>Wind speed and direction at Barleycove. Northerly and north-easterly winds are generally the most favourable because they are offshore for the beach.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Tide</h3>
+                        <p>The predicted water level and whether the tide is rising or falling. Barleycove can work on different tides, with a low-to-rising tide given a small advantage.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Surf score</h3>
+                        <p>The score combines swell direction, exposure, height, period, wind direction, wind speed and tide. It is a guide for Barleycove, not a guarantee of the waves.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Forecast confidence</h3>
+                        <p>Confidence is based on how much of the main swell and wind data is available. It is separate from the surf score.</p>
+                    </article>
+                
+                    <article class="explanation-card">
+                        <h3>Map</h3>
+                        <p>The map follows the selected forecast time and shows where the swell is coming from relative to the beach.</p>
+                    </article>
+                </div>
             </section>
         </main>
 

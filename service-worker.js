@@ -1,4 +1,4 @@
-const CACHE_NAME = "barleycove-surf-v2";
+const CACHE_NAME = "barleycove-surf-v3";
 
 const APP_SHELL = [
   "/",
@@ -40,16 +40,6 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   if (url.pathname === "/.netlify/functions/surf-forecast") {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match(event.request);
-      }),
-    );
-
-    return;
-  }
-
-  if (url.pathname === "/.netlify/functions/surf-reports") {
     event.respondWith(
       fetch(event.request).catch(() => {
         return caches.match(event.request);
