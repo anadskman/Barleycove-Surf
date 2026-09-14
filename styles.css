@@ -308,7 +308,7 @@ h1 {
 
 .condition-info-section,
 .explanation-section {
-    margin-top: 50px;
+    margin: 50px 0;
 }
 
 .condition-info {
@@ -361,6 +361,15 @@ h1 {
 .info-item span {
     color: var(--muted);
     font-size: 12px;
+}
+
+.explanation-section {
+    margin: 0 25px;
+    margin-bottom: 50px;
+}
+
+.explanation-section .eyebrow {
+    margin: 35px 0 10px 0;
 }
 
 .explanation-grid {

@@ -864,7 +864,9 @@ function displayForecastDays(data) {
       const selected = day.key === selectedDayKey ? " selected" : "";
 
       return `
-        <button class="forecast-day${selected}" type="button" data-day="${day.key}">${formatDayLabel(day.timestamp)}</button>
+        <button class="forecast-day${selected}" type="button" data-day="${day.key}">
+          ${formatDayLabel(day.timestamp)}
+        </button>
       `;
     })
     .join("");
@@ -942,13 +944,15 @@ function displayCurrentConditions(data, index) {
     tideDetails.textContent = "Tide data unavailable";
   }
 
-  const airTemp = getValue(data, "temp-surface", index);
+  const waterTemperature = getValue(data, "waterTemperature", index);
 
-  waterTemp.textContent = "--";
-  waterDetails.textContent =
-    airTemp !== null
-      ? "Water temperature unavailable"
-      : "No water temperature data";
+  if (waterTemperature !== null) {
+    waterTemp.textContent = `${waterTemperature.toFixed(1)} °C`;
+    waterDetails.textContent = "Sea surface temperature · forecast";
+  } else {
+    waterTemp.textContent = "--";
+    waterDetails.textContent = "Water temperature unavailable";
+  }
 
   const surfScore = calculateSurfScore(data, index);
 
@@ -1014,7 +1018,13 @@ function displayHourlyForecast(data, dayKey) {
         : "Unavailable";
 
       return `
-        <article class="hourly-card${isCurrent ? " current" : ""}${isSelected ? " selected" : ""}" data-index="${index}" tabindex="0" role="button" aria-label="Select forecast for ${formatForecastDateTime(data.ts[index])}">
+        <article
+          class="hourly-card${isCurrent ? " current" : ""}${isSelected ? " selected" : ""}"
+          data-index="${index}"
+          tabindex="0"
+          role="button"
+          aria-label="Select forecast for ${formatForecastDateTime(data.ts[index])}"
+        >
           <div class="hourly-time">
             ${new Date(data.ts[index]).toLocaleTimeString("en-IE", {
               hour: "2-digit",
@@ -1134,7 +1144,9 @@ function updateConditionInfo(data, index, condition) {
   } else if (condition === "wind") {
     conditionInfo.innerHTML = `
       <h3>${wind ? wind.speed.toFixed(0) + " kt " + degreesToCompass(wind.direction) : "--"}</h3>
-      <p>Northerly and north-easterly winds are generally the most useful direction for Barleycove. This wind contributes ${score.factors.windDirection}/20 for direction and ${score.factors.windSpeed}/5 for speed.</p>
+      <p>
+        Northerly and north-easterly winds are generally the most useful direction for Barleycove. This wind contributes ${score.factors.windDirection}/20 for direction and ${score.factors.windSpeed}/5 for speed.
+      </p>
       <div class="info-grid">
         <div class="info-item"><strong>Direction</strong><span>${wind ? degreesToCompass(wind.direction) : "--"}</span></div>
         <div class="info-item"><strong>Speed</strong><span>${wind ? wind.speed.toFixed(0) + " kt" : "--"}</span></div>
@@ -1154,9 +1166,17 @@ function updateConditionInfo(data, index, condition) {
       </div>
     `;
   } else {
+    const waterTemperature = getValue(data, "waterTemperature", index);
+
     conditionInfo.innerHTML = `
-      <h3>Water temperature</h3>
-      <p>A reliable local sea-surface temperature feed is not currently included in the forecast response, so this value is left blank rather than showing air temperature as water temperature.</p>
+      <h3>${waterTemperature !== null ? waterTemperature.toFixed(1) + " °C" : "Water temperature unavailable"}</h3>
+      <p>
+        This is the forecast sea-surface temperature for the selected time. It comes from the Open-Meteo Marine API and is separate from air temperature.
+      </p>
+      <div class="info-grid">
+        <div class="info-item"><strong>Temperature</strong><span>${waterTemperature !== null ? waterTemperature.toFixed(1) + " °C" : "--"}</span></div>
+        <div class="info-item"><strong>Time</strong><span>${formatForecastDateTime(timestamp)}</span></div>
+      </div>
     `;
   }
 }
