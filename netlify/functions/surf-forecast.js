@@ -38,19 +38,21 @@ async function getWindyForecast(model, parameters, apiKey) {
 
 async function getTideForecast() {
   const now = new Date();
+
   const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
   const end = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000);
 
-  const params = new URLSearchParams({
-    time: "time,stationID,Water_Level",
-    stationID: "Castletownbere",
-    "time>=": start.toISOString(),
-    "time<=": end.toISOString(),
-  });
+  const startTime = start.toISOString().replace(/\.\d{3}Z$/, "Z");
+
+  const endTime = end.toISOString().replace(/\.\d{3}Z$/, "Z");
 
   const url =
-    "https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.json?" +
-    params.toString();
+    "https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.json" +
+    "?time,stationID,Water_Level" +
+    "&stationID=%22Castletownbere%22" +
+    `&time%3E=${encodeURIComponent(startTime)}` +
+    `&time%3C=${encodeURIComponent(endTime)}`;
 
   const response = await fetch(url);
   const text = await response.text();
